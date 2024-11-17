@@ -3,6 +3,8 @@
 #
 cmake_minimum_required (VERSION 3.8)
 
+set(CMAKE_CXX_STANDARD 20)
+
 # Enable Hot Reload for MSVC compilers if supported.
 if (POLICY CMP0141)
   cmake_policy(SET CMP0141 NEW)
@@ -12,7 +14,11 @@ endif()
 project ("tinyrenderer")
 
 # Add source to this project's executable.
-add_executable (tinyrenderer "tinyrenderer.cpp" "tinyrenderer.h" "tgaimage.cpp")
+add_executable ("${CMAKE_PROJECT_NAME}")
+
+file(GLOB_RECURSE MY_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*")
+
+target_sources("${CMAKE_PROJECT_NAME}" PRIVATE ${MY_SOURCES})
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET tinyrenderer PROPERTY CXX_STANDARD 20)
