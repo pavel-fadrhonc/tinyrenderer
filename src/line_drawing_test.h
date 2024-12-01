@@ -49,7 +49,7 @@ void DrawLineTest2()
 	image.write_tga_file("output.tga");
 }
 
-void DrawModel()
+void DrawModel_wireframe()
 {
 	Model headModel{ "../../../assets/models/african_head.obj" };
 	constexpr int WIDTH = 1000;
@@ -71,5 +71,5 @@ void DrawModel()
 
 
 	image.flip_vertically();
-	image.write_tga_file("AfricanHead_render.tga");
+	image.write_tga_file("AfricanHead_render_wireframe.tga");
 }

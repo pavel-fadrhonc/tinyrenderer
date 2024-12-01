@@ -12,31 +12,49 @@ template <typename T> struct Vec2 {
 		struct {T x, y;};
 		T raw[2];
 	};
-	Vec2() : u(0), v(0) {}
-	Vec2(T _u, T _v) : u(_u),v(_v) {}
+	constexpr Vec2() : u(0), v(0) {}
+	constexpr Vec2(T _u, T _v) : u(_u),v(_v) {}
 	inline Vec2<T> operator +(const Vec2<T> &V) const { return Vec2<T>(u+V.u, v+V.v); }
 	inline Vec2<T> operator -(const Vec2<T> &V) const { return Vec2<T>(u-V.u, v-V.v); }
 	inline Vec2<T> operator *(float f)          const { return Vec2<T>(u*f, v*f); }
 	template <class > friend std::ostream& operator<<(std::ostream& s, Vec2<T>& v);
 };
 
-template <typename t> struct Vec3 {
+template <typename T> struct Vec3 {
 	union {
-		struct {t x, y, z;};
-		struct { t ivert, iuv, inorm; };
-		t raw[3];
+		struct {T x, y, z;};
+		struct { T ivert, iuv, inorm; };
+		T raw[3];
 	};
-	Vec3() : x(0), y(0), z(0) {}
-	Vec3(t _x, t _y, t _z) : x(_x),y(_y),z(_z) {}
-	Vec3(const Vec2<t>& vec2) : x(vec2.x), y(vec2.y), z(0) {}
-	inline Vec3<t> operator ^(const Vec3<t> &v) const { return Vec3<t>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
-	inline Vec3<t> operator +(const Vec3<t> &v) const { return Vec3<t>(x+v.x, y+v.y, z+v.z); }
-	inline Vec3<t> operator -(const Vec3<t> &v) const { return Vec3<t>(x-v.x, y-v.y, z-v.z); }
-	inline Vec3<t> operator *(float f)          const { return Vec3<t>(x*f, y*f, z*f); }
-	inline t       operator *(const Vec3<t> &v) const { return x*v.x + y*v.y + z*v.z; }
-	float norm () const { return std::sqrt(x*x+y*y+z*z); }
-	Vec3<t> & normalize(t l=1) { *this = (*this)*(l/norm()); return *this; }
-	template <class > friend std::ostream& operator<<(std::ostream& s, Vec3<t>& v);
+	constexpr Vec3() : x(0), y(0), z(0) {}
+	constexpr Vec3(T _x, T _y, T _z) : x(_x),y(_y),z(_z) {}
+	constexpr Vec3(const Vec2<T>& vec2) : x(vec2.x), y(vec2.y), z(0) {}
+	inline Vec3<T> operator ^(const Vec3<T> &v) const { return Vec3<T>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
+	inline Vec3<T> operator +(const Vec3<T> &v) const { return Vec3<T>(x+v.x, y+v.y, z+v.z); }
+	inline Vec3<T> operator -(const Vec3<T> &v) const { return Vec3<T>(x-v.x, y-v.y, z-v.z); }
+	inline Vec3<T> operator *(float f)          const { return Vec3<T>(x*f, y*f, z*f); }
+	inline T       operator *(const Vec3<T> &v) const { return x*v.x + y*v.y + z*v.z; }
+	float magnitude () const { return std::sqrt(x*x+y*y+z*z); }
+	Vec3<T> & normalize(T l=1) { *this = (*this)*(l/magnitude()); return *this; }
+	template <class > friend std::ostream& operator<<(std::ostream& s, Vec3<T>& v);
+
+	Vec3 cross(const Vec3<T>& v) const
+	{
+		return Vec3{
+			y * v.z - z * v.y,
+			z * v.x - x * v.z,
+			x * v.y - y * v.x
+		};
+	}
+
+	T dot(const Vec3<T>& v) const
+	{
+		return v.x * x + v.y * y + v.z * z;
+	}
+
+	float sqrtMagnitude() { return this->dot(*this); }
+
+	Vec2<T> ToVec2() { return Vec2<T> {x, y}; };
 };
 
 typedef Vec2<float> Vec2f;
@@ -53,5 +71,17 @@ template <class t> std::ostream& operator<<(std::ostream& s, Vec3<t>& v) {
 	s << "(" << v.x << ", " << v.y << ", " << v.z << ")\n";
 	return s;
 }
+
+inline float TriangleArea(const Vec3i& v1, const Vec3i& v2, const Vec3i& v3)
+{
+	return (v2 - v1).cross(v3 - v1).magnitude() * 0.5f;
+}
+
+constexpr Vec3f VForward { 0, 0, 1.f };
+constexpr Vec3f VBack = Vec3f{ 0, 0, -1.f };
+constexpr Vec3f VRight = Vec3f{ 1, 0, 0.f };
+constexpr Vec3f VLight = Vec3f{ -1, 0, 0.f };
+constexpr Vec3f VUp = Vec3f{0, 1.0f, 0.f};
+constexpr Vec3f VDown = Vec3f{0, -1.0f, 0.f};
 
 #endif //__GEOMETRY_H__

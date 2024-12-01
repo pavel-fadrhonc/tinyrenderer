@@ -32,19 +32,20 @@ struct TGAColor {
 	};
 	int bytespp;
 
-	TGAColor() : val(0), bytespp(1) {
+	constexpr TGAColor() : val(0), bytespp(1) {}
+
+	constexpr TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A) : b(B), g(G), r(R), a(A), bytespp(4) {	}
+
+	static inline TGAColor FromFloat(float R, float G, float B, float A)
+	{
+		return TGAColor(static_cast<unsigned char>(B * 255), static_cast<unsigned char>(G * 255), static_cast<unsigned char>(R * 255), static_cast<unsigned char>(A * 255));
 	}
 
-	TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A) : b(B), g(G), r(R), a(A), bytespp(4) {
-	}
+	constexpr TGAColor(int v, int bpp) : val(v), bytespp(bpp) {}
 
-	TGAColor(int v, int bpp) : val(v), bytespp(bpp) {
-	}
+	constexpr TGAColor(const TGAColor &c) : val(c.val), bytespp(c.bytespp) {	}
 
-	TGAColor(const TGAColor &c) : val(c.val), bytespp(c.bytespp) {
-	}
-
-	TGAColor(const unsigned char *p, int bpp) : val(0), bytespp(bpp) {
+	constexpr TGAColor(const unsigned char *p, int bpp) : val(0), bytespp(bpp) {
 		for (int i=0; i<bpp; i++) {
 			raw[i] = p[i];
 		}
