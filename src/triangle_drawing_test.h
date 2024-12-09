@@ -45,6 +45,8 @@ void DrawTriangle_Model()
 	constexpr int FAR_PLANE = 1000;
 	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
 	ZBufferBase* zBuffer = new ZBufferIntDefault;
+	TGAImage texture;
+	texture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
 
 	const int numFaces = headModel.nfaces();
 	for (int i = 0; i < numFaces; i++) 
@@ -53,6 +55,10 @@ void DrawTriangle_Model()
 		Vec3f v0 = headModel.vert(face[0]);
 		Vec3f v1 = headModel.vert(face[1]);
 		Vec3f v2 = headModel.vert(face[2]);
+
+		Vec2f uv0 = headModel.uv(face[0]);
+		Vec2f uv1 = headModel.uv(face[1]);
+		Vec2f uv2 = headModel.uv(face[2]);
 
 		Vec3f normal = (v2 - v0).cross(v1 - v0).normalize();
 		float shading = normal.dot(VBack);

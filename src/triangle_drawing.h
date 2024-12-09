@@ -237,12 +237,7 @@ void DrawTriangleMethod3_WithZ(const Vec3i& v1_, const Vec3i& v2_, const Vec3i& 
 	// if line a->c ends sooner or a->b ends sooner
 
 	Vec3i startPointLeft = a;
-	Vec3i endPointLeft = c;
 	Vec3i startPointRight = a;
-	Vec3i endPointRight = b;
-
-	Vec3i leftLine = firstLine;
-	Vec3i rightLine = secondLine;
 
 	// once we have a as most bottom and vertices in CCW order we always draw from the a->c line to the a->b line
 	// then, depending on whether b.y is lower then c.y the a->c line switches to c->b line or a->b line switches to b->c line
@@ -292,8 +287,6 @@ void DrawTriangleMethod3_WithZ(const Vec3i& v1_, const Vec3i& v2_, const Vec3i& 
 				dzFirst = dzThird;
 				topLine = b.y;
 				startPointLeft = c;
-				endPointLeft = b;
-				leftLine = thirdLine;
 			}
 			else if (line > b.y)
 			{
@@ -305,8 +298,6 @@ void DrawTriangleMethod3_WithZ(const Vec3i& v1_, const Vec3i& v2_, const Vec3i& 
 				dzSecond = dzThird;
 				topLine = c.y;
 				startPointRight = b;
-				endPointRight = c;
-				rightLine = thirdLine;
 			}
 		}
 	}
