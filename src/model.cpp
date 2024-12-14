@@ -27,22 +27,23 @@ Model::Model(const char *filename) : verts_(), faces_() {
             iss >> trash;
             while (iss >> idx >> trash >> uvidx >> trash >> itrash) {
                 idx--; // in wavefront obj all indices start at 1, not zero
+                uvidx--;
                 f.push_back(idx);
-                uvidxs.push_back(uvidx);
+                f.push_back(uvidx);
             }
             faces_.push_back(f);
         } else if (!line.compare(0, 3, "vt "))
         {
             float u, v;
             float ftrash;
-            iss >> trash;
+            iss >> trash >> trash;
             iss >> u >> v >> ftrash;
-            uvs.emplace_back(u, v);
+            uvs_.emplace_back(u, v);
         }
     }
 
-    for (int uvidx: uvidxs)
-        uvs_.push_back(uvs[uvidx-1]);
+    //for (int uvidx: uvidxs)
+    //    uvs_.push_back(uvs[uvidx-1]);
 
     std::cerr << "# v# " << verts_.size() << " f# "  << faces_.size() << std::endl;
 }

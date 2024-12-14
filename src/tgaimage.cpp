@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include "tgaimage.h"
+#include "geometry.h"
 
 TGAImage::TGAImage() : data(NULL), width(0), height(0), bytespp(0) {
 }
@@ -248,7 +249,7 @@ bool TGAImage::unload_rle_data(std::ofstream &out) {
 	return true;
 }
 
-TGAColor TGAImage::get(int x, int y) {
+TGAColor TGAImage::get(int x, int y) const {
 	if (!data || x<0 || y<0 || x>=width || y>=height) {
 		return TGAColor();
 	}
@@ -263,15 +264,15 @@ bool TGAImage::set(int x, int y, TGAColor c) {
 	return true;
 }
 
-int TGAImage::get_bytespp() {
+int TGAImage::get_bytespp() const{
 	return bytespp;
 }
 
-int TGAImage::get_width() {
+int TGAImage::get_width() const {
 	return width;
 }
 
-int TGAImage::get_height() {
+int TGAImage::get_height() const {
 	return height;
 }
 
@@ -311,6 +312,26 @@ unsigned char *TGAImage::buffer() {
 
 void TGAImage::clear() {
 	memset((void *)data, 0, width*height*bytespp);
+}
+
+Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, const int width, const int height, const int farPlane)
+{
+	return Vec3i
+	{
+		static_cast<int>((vert.x + 1.) * width * 0.5f),
+		static_cast<int>((vert.y + 1.) * height * 0.5f),
+		static_cast<int>((vert.z + 1.) * farPlane * 0.5f)
+	};
+}
+
+Vec3f ConvertImageCoordsIntoModelCoords(const Vec3i& vert, const int width, const int height, const int farPlane)
+{
+	return Vec3f
+	{
+		(float)vert.x / (float)width * 2.0f - 1.f,
+		(float)vert.y / (float)height * 2.0f - 1.f,
+		(float)vert.z / (float)farPlane * 2.0f - 1.f
+	};
 }
 
 bool TGAImage::scale(int w, int h) {

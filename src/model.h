@@ -8,7 +8,7 @@ class Model {
 private:
 	std::vector<Vec3f> verts_;
 	std::vector<Vec2f> uvs_;
-	std::vector<std::vector<int> > faces_;
+	std::vector<std::vector<int> > faces_; // interleaved indices into verts_ and uvs_ array
 public:
 	Model(const char *filename);
 	~Model();

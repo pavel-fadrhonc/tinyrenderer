@@ -42,10 +42,10 @@ private:
 template <typename T, int width, int height,T invalid_value >
 bool ZBuffer<T, width, height, invalid_value>::TestAndWrite(const Vec3i& vec)
 {
-	int index = vec.y * width + vec.x;
+	int index = vec.y * (width - 1) + vec.x;
 	T val = m_Buffer[index];
 	const bool testResult = (vec.z <= val);
-	printf("Testing at (%d, %d, %d): %s, stored: %d \n", vec.x, vec.y, vec.z, testResult ? "false" : "true", m_Buffer[index]);
+	//printf("Testing at (%d, %d, %d): %s, stored: %d \n", vec.x, vec.y, vec.z, testResult ? "false" : "true", m_Buffer[index]);
 
 	if (testResult)
 		return false;

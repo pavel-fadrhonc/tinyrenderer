@@ -3,6 +3,8 @@
 
 #include <fstream>
 
+#include "geometry.h"
+
 #pragma pack(push,1)
 struct TGA_Header {
 	char idlength;
@@ -58,6 +60,22 @@ struct TGAColor {
 		}
 		return *this;
 	}
+
+	TGAColor operator*(const TGAColor& c)
+	{
+		TGAColor col {*this};
+		col *= c;
+		return col;
+	}
+
+	TGAColor& operator*=(const TGAColor& c)
+	{
+		r = (char) ((float) r / 255.0f * c.r);
+		g = (char) ((float) g / 255.0f * c.g);
+		b = (char) ((float) b / 255.0f * c.b);
+		a = (char) ((float) a / 255.0f * c.a);
+		return *this;
+	}
 };
 
 
@@ -83,15 +101,18 @@ public:
 	bool flip_horizontally();
 	bool flip_vertically();
 	bool scale(int w, int h);
-	TGAColor get(int x, int y);
+	TGAColor get(int x, int y) const;
 	bool set(int x, int y, TGAColor c);
 	~TGAImage();
 	TGAImage & operator =(const TGAImage &img);
-	int get_width();
-	int get_height();
-	int get_bytespp();
+	int get_width() const;
+	int get_height() const;
+	int get_bytespp() const;
 	unsigned char *buffer();
 	void clear();
 };
+
+Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, const int width, const int height, const int farPlane);
+Vec3f ConvertImageCoordsIntoModelCoords(const Vec3i& vert, const int width, const int height, const int farPlane);
 
 #endif //__IMAGE_H__
