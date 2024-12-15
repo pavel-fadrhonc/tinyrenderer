@@ -112,7 +112,7 @@ public:
 	void clear();
 };
 
-Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, const int width, const int height, const int farPlane);
-Vec3f ConvertImageCoordsIntoModelCoords(const Vec3i& vert, const int width, const int height, const int farPlane);
+Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, float scale, const int width, const int height, const int farPlane);
+Vec3f ConvertImageCoordsIntoModelCoords(const Vec3f& vert, float scale, const int width, const int height, const int farPlane);
 
 #endif //__IMAGE_H__

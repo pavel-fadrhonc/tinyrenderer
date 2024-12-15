@@ -4,7 +4,10 @@
 #include <cmath>
 #include <ostream>
 
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class Vector4;
 
 template <typename T> struct Vec2 {
 	union {
@@ -55,6 +58,9 @@ template <typename T> struct Vec3 {
 	float sqrtMagnitude() { return this->dot(*this); }
 
 	Vec2<T> ToVec2() { return Vec2<T> {x, y}; };
+
+	Vector4<T> ToPoint() const;
+	Vector4<T> ToDirection() const;
 };
 
 typedef Vec2<float> Vec2f;
@@ -83,5 +89,192 @@ constexpr Vec3f VRight = Vec3f{ 1, 0, 0.f };
 constexpr Vec3f VLight = Vec3f{ -1, 0, 0.f };
 constexpr Vec3f VUp = Vec3f{0, 1.0f, 0.f};
 constexpr Vec3f VDown = Vec3f{0, -1.0f, 0.f};
+
+template
+<typename T>
+class Vector4
+{
+public:
+	Vector4 ()
+		: m_x(0.f), m_y(0.f), m_z(0.f), m_w(0.f) {}
+
+	Vector4(T x, T y, T z, T w)
+		: m_x(x), m_y(y), m_z(z), m_w(w) {}
+
+	Vector4(const T arr[4])
+		: m_x(arr[0]), m_y(arr[1]), m_z(arr[2]), m_w(arr[3]) {}
+
+	Vector4(Vec3<T> vec3, T w)
+		: m_x(vec3.x), m_y(vec3.y), m_z(vec3.z), m_w(w) {}
+
+	T dot(const Vector4& vec)
+	{
+		return m_x * vec.m_x + m_y * vec.m_y + m_z * vec.m_z + m_w * vec.m_w;
+	}
+
+	T x()  const { return m_x; }
+	T y()  const { return m_y; }
+	T z()  const { return m_z; }
+	T w()  const { return m_w; }
+
+	T* getRaw() { return &m_raw[0]; }
+
+	Vec3<T> FromHomogeneous()
+	{
+		return Vec3<T> { m_x / m_w, m_y / m_w, m_z / m_w };
+	}
+
+	friend std::ostream& operator <<(std::ostream& os, const Vector4& vec);
+
+private:
+	union
+	{
+		struct { T m_x, m_y, m_z, m_w; };
+		struct { T m_r, m_g, m_b, m_a; };
+		T m_raw[4];
+	};
+};
+
+template <typename T>
+inline std::ostream& operator <<(std::ostream& os, const Vector4<T>& vec)
+{
+	os << '(' << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ", " << vec.m_w << ')';
+
+	return os;
+}
+
+template <typename T>
+Vector4<T> Vec3<T>::ToPoint() const
+{
+	return Vector4<T>(x, y, z, 1.0f);
+}
+
+template <typename T>
+Vector4<T> Vec3<T>::ToDirection() const
+{
+	return Vector4<T>(x, y, z, 0.0f);
+}
+
+
+template
+<typename T>
+class Matrix4x4
+{
+public:
+	static constexpr size_t type_size = sizeof(T);
+	static constexpr size_t row_size = 4 * type_size;
+
+	Matrix4x4()
+	{
+		memset(raw, T{}, 16 * sizeof(T));
+	}
+
+	Matrix4x4(T m00, T m01, T m02, T m03, T m10, T m11, T m12, T m13, T m20, T m21, T m22, T m23, T m30, T m31, T m32, T m33)
+	{
+		rawMat[0][0] = m00; rawMat[0][1] = m01; rawMat[0][2] = m02; rawMat[0][3] = m03;
+		rawMat[1][0] = m10; rawMat[1][1] = m11; rawMat[1][2] = m12; rawMat[1][3] = m13;
+		rawMat[2][0] = m20; rawMat[2][1] = m21; rawMat[2][2] = m22; rawMat[2][3] = m23;
+		rawMat[3][0] = m30; rawMat[3][1] = m31; rawMat[3][2] = m32; rawMat[3][3] = m33;
+	}
+
+	Matrix4x4(Vector4<T> row0, Vector4<T> row1, Vector4<T> row2, Vector4<T> row3)
+	{
+		memcpy(rawMat[0], row0.getRaw(), row_size);
+		memcpy(rawMat[1], row1.getRaw(), row_size);
+		memcpy(rawMat[2], row2.getRaw(), row_size);
+		memcpy(rawMat[3], row3.getRaw(), row_size);
+	}
+
+	void SetIdentity();
+
+	Matrix4x4 operator*(const Matrix4x4& mat)
+	{
+		return Matrix4x4
+		{
+			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(0)),
+			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(1)),
+			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(2)),
+			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(3)),
+					    
+			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(0)),
+			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(1)),
+			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(2)),
+			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(3)),
+					    
+			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(0)),
+			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(1)),
+			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(2)),
+			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(3)),
+					    
+			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(0)),
+			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(1)),
+			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(2)),
+			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(3)),
+
+			// do I need to rawdog it? or will the generated instructions be the same
+			//rawMat[0][0] * mat.rawMat[0][0] + rawMat[0][1] * mat.rawMat[1][0] + rawMat[0][2] * mat.rawMat[2][0] + rawMat[0][3] * mat.rawMat[3][0],
+			//rawMat[1][0] * mat.rawMat[0][0] + rawMat[1][1] * mat.rawMat[1][0] + rawMat[1][2] * mat.rawMat[2][0] + rawMat[1][3] * mat.rawMat[3][0],
+			//rawMat[2][0] * mat.rawMat[0][0] + rawMat[2][1] * mat.rawMat[1][0] + rawMat[2][2] * mat.rawMat[2][0] + rawMat[2][3] * mat.rawMat[3][0],
+			//rawMat[3][0] * mat.rawMat[0][0] + rawMat[3][1] * mat.rawMat[1][0] + rawMat[3][2] * mat.rawMat[2][0] + rawMat[3][3] * mat.rawMat[3][0],
+		};
+	}
+
+	Vector4<T> operator*(const Vector4<T>& vec)
+	{
+		return Vector4<T>
+		{
+			Vector4<T>{ rawMat[0] }.dot(vec),
+			Vector4<T>{ rawMat[1] }.dot(vec),
+			Vector4<T>{ rawMat[2] }.dot(vec),
+			Vector4<T>{ rawMat[3] }.dot(vec)
+		};
+	}
+
+	T* operator[](int row)
+	{
+		return rawMat[row];
+	}
+
+	void SetRow(int rowIdx, const Vector4<T>& row)
+	{
+		memcpy(rawMat[rowIdx], row.m_raw, 4 * sizeof(T));
+	}
+
+	Vector4<T> GetColumn(int columnIdx) const
+	{
+		return Vector4<T> { rawMat[0][columnIdx], rawMat[1][columnIdx], rawMat[2][columnIdx], rawMat[3][columnIdx] };
+	}
+
+	void SetColumn(int columnIdx, const Vector4<T>& column)
+	{
+		rawMat[0][columnIdx] = column.x();
+		rawMat[1][columnIdx] = column.y();
+		rawMat[2][columnIdx] = column.z();
+		rawMat[3][columnIdx] = column.w();
+	}
+
+	void SetElement(int row, int column, T value)
+	{
+		rawMat[row][column] = value;
+	}
+
+	union
+	{
+	T raw[4 * 4];
+	T rawMat[4][4]; // [row][column]
+	};
+};
+
+template <typename T>
+void Matrix4x4<T>::SetIdentity()
+{
+	rawMat[0][0] = 1.f;
+	rawMat[1][1] = 1.f;
+	rawMat[2][2] = 1.f;
+	rawMat[3][3] = 1.f;
+}
+
+using Vec4f = Vector4<float>;
+using Mat4 = Matrix4x4<float>;
 
 #endif //__GEOMETRY_H__

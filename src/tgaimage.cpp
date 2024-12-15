@@ -314,13 +314,13 @@ void TGAImage::clear() {
 	memset((void *)data, 0, width*height*bytespp);
 }
 
-Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, const int width, const int height, const int farPlane)
+Vec3i ConvertModelCoordsIntoImageCoords(const Vec3f& vert, float scale, const int width, const int height, const int farPlane)
 {
 	return Vec3i
 	{
-		static_cast<int>((vert.x + 1.) * width * 0.5f),
-		static_cast<int>((vert.y + 1.) * height * 0.5f),
-		static_cast<int>((vert.z + 1.) * farPlane * 0.5f)
+		static_cast<int>((vert.x * scale + 1.) * width * 0.5f),
+		static_cast<int>((vert.y * scale + 1.) * height * 0.5f),
+		static_cast<int>((vert.z * scale + 1.) * farPlane * 0.5f)
 	};
 }
 

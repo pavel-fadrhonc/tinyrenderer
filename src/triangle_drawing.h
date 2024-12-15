@@ -292,7 +292,10 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 			float zFloat = xT * zDiff + zStart;
 			int z = (int)zFloat;
 			float z01 = zFloat / (float)farPlaneCoord;
-			const bool zTest = zBuffer.TestAndWrite({ x, line, z });
+
+			Vec3i imagePos{ x, line, z };
+
+			const bool zTest = zBuffer.TestAndWrite(imagePos);
 
 			TGAColor finalColor = tint;
 
@@ -300,7 +303,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 			{
 				{ // barycentric coordinates (u,v,w) computation, texture coordinate (r,s) computation and texture sampling
 #if USE_INTS_FOR_TEXTURING == 1
-					Vec3i p{ x, line, z };
+					Vec3i p{ imagePos.x, imagePos.y, imagePos.z };
 					float u = ((t.v2i - p).cross(t.v3i - p).magnitude() * 0.5f) / triangleArea;
 					float v = ((t.v1i - p).cross(t.v3i - p).magnitude() * 0.5f) / triangleArea;
 					//float w = ((t.v2i - p).cross(t.v1i - p).magnitude() * 0.5f) / triangleArea;
@@ -313,16 +316,11 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 
 #endif
 
-
-					//u = 1.0f - u;
-					//v = 1.0f - v;
-					//w = 1.0f - w;
-
 					Vec2f rs = t.uv1 * u + t.uv2 * v + t.uv3 * w;
 					finalColor *= texture.get(texture.get_width() * rs.u, texture.get_height() * rs.v);
 				}
 
-				image.set(x, line, finalColor);
+				image.set(imagePos.x, imagePos.y, finalColor);
 			}
 		}
 

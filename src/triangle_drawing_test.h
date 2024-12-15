@@ -3,6 +3,7 @@
 #include "random.h"
 #include "constants.h"
 #include "tgaimage.h"
+#include "transformations.h"
 
 void DrawTriangleTest()
 {
@@ -48,6 +49,22 @@ void DrawTriangle_Model()
 		Vec3f v1 = headModel.vert(face[2]);
 		Vec3f v2 = headModel.vert(face[4]);
 
+		// apply perspective projection
+		constexpr float camZPos = 3.0f;
+		auto applyPerspective = [camZPos](const Vec3f& vertex) -> Vec3f
+			{
+				float perspDivisor = (1.0f - vertex.z / camZPos);
+				return
+				{
+					vertex.x / perspDivisor,
+					vertex.y / perspDivisor,
+					vertex.z / perspDivisor,
+				};
+			};
+		//v0 = applyPerspective(v0);
+		//v1 = applyPerspective(v1);
+		//v2 = applyPerspective(v2);
+
 		Vec2f uv0 = headModel.uv(face[1]);
 		Vec2f uv1 = headModel.uv(face[3]);
 		Vec2f uv2 = headModel.uv(face[5]);
@@ -59,21 +76,38 @@ void DrawTriangle_Model()
 			continue;
 
 		TGAColor tint = TGAColor::FromFloat( shading, shading, shading, 1.0f);
+		constexpr float scale = 0.95f;
+		constexpr Vec2f offsetNDC{ 0.f, 0.f };
 
-		Vec3i v0i = ConvertModelCoordsIntoImageCoords(v0, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
-		Vec3i v1i = ConvertModelCoordsIntoImageCoords(v1, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
-		Vec3i v2i = ConvertModelCoordsIntoImageCoords(v2, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
+		Mat4 viewPortMat = getViewport(scale, offsetNDC, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
+		Mat4 projectionMat = getProjection(camZPos);
+
+
+		Vec3f transV0 = (viewPortMat * projectionMat * v0.ToPoint()).FromHomogeneous();
+		Vec3i transV0i = Vec3i{ (int)transV0.x, (int)transV0.y, (int)transV0.z, };
+
+		Vec3f transV1 = (viewPortMat * projectionMat * v1.ToPoint()).FromHomogeneous();
+		Vec3i transV1i = Vec3i{ (int)transV1.x, (int)transV1.y, (int)transV1.z, };
+
+		Vec3f transV2 = (viewPortMat * projectionMat * v2.ToPoint()).FromHomogeneous();
+		Vec3i transV2i = Vec3i{ (int)transV2.x, (int)transV2.y, (int)transV2.z, };
+
+
+		//Vec3i v0i = ConvertModelCoordsIntoImageCoords(v0,scale, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
+		//Vec3i v1i = ConvertModelCoordsIntoImageCoords(v1,scale, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
+		//Vec3i v2i = ConvertModelCoordsIntoImageCoords(v2,scale, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_X, FAR_PLANE);
 
 		constexpr int PERFORMANCE_TEST_ITERATIONS = 1;
 
 		Triangle t
 		{
-			v0i, v1i, v2i,
+			//v0i, v1i, v2i,
+			transV0i, transV1i,transV2i,
 			v0, v1, v2,
 			uv0, uv1, uv2
 		};
 
-		for (int i = 0; i < PERFORMANCE_TEST_ITERATIONS; i++)
+		for (int perfi = 0; perfi < PERFORMANCE_TEST_ITERATIONS; perfi++)
 			DrawTriangleMethod3_WithZ_WithTexture(t, image, tint, FAR_PLANE, *zBuffer, texture);
 			//DrawTriangleMethod3_2DCoords(v0i, v1i, v2i, image, color);
 
