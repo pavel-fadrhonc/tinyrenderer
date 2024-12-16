@@ -61,6 +61,14 @@ struct TGAColor {
 		return *this;
 	}
 
+	void scale(float scalar)
+	{
+		r = (char)((float)r * scalar);
+		g = (char)((float)g * scalar);
+		b = (char)((float)b * scalar);
+		a = (char)((float)a * scalar);
+	}
+
 	TGAColor operator*(const TGAColor& c)
 	{
 		TGAColor col {*this};

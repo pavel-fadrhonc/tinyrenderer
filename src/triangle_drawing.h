@@ -198,14 +198,22 @@ void DrawTriangleMethod3_2DCoords(const Vec3i& v1_, const Vec3i& v2_, const Vec3
 
 struct Triangle
 {
-	Vec3i v1i;
-	Vec3i v2i;
-	Vec3i v3i;
+	// screen space positions
+	Vec3i v1ss;
+	Vec3i v2ss;
+	Vec3i v3ss;
 
-	Vec3f v1f;
-	Vec3f v2f;
-	Vec3f v3f;
+	// world space positions
+	Vec3f v1ws;
+	Vec3f v2ws;
+	Vec3f v3ws;
 
+	// normals
+	Vec3f nV1i;
+	Vec3f nV2i;
+	Vec3f nV3i;
+
+	// uvs
 	Vec2f uv1;
 	Vec2f uv2;
 	Vec2f uv3;
@@ -215,12 +223,12 @@ struct Triangle
 ///	Draws the triangle given by 3 coordinates that have Z coordinate as int
 /// </summary>
 void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, const TGAColor& tint,
-	int farPlaneCoord, ZBufferBase& zBuffer, const TGAImage& texture)
+	int farPlaneCoord, ZBufferBase& zBuffer, const TGAImage& texture, Vec3f lightPos)
 {
 #define USE_INTS_FOR_TEXTURING 1
 
 	PROFILE_FUNCTION()
-	std::array vertices{ t.v1i, t.v2i, t.v3i };
+	std::array vertices{ t.v1ss, t.v2ss, t.v3ss };
 
 	// sort to find the most bottom
 	std::sort(vertices.begin(), vertices.end(), [](const Vec3i& a, const Vec3i& b) { return a.y < b.y; });
@@ -234,11 +242,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 		std::swap(b, c);
 
 	// compute triangle area so we can determine the barycentric coordinates, compute uv and sample the texture
-#if USE_INTS_FOR_TEXTURING 1
-	float triangleArea = (t.v2i - t.v1i).cross(t.v3i - t.v1i).magnitude() * 0.5f;
-#else
-	float triangleArea = (t.v2f - t.v1f).cross(t.v3f - t.v1f).magnitude() * 0.5f;
-#endif
+	float triangleArea = (t.v2ss - t.v1ss).cross(t.v3ss - t.v1ss).magnitude() * 0.5f;
 
 	// for every line determine the start and end with the same approach as in drawing line
 	// and then draw all pixels on the x axis in between.
@@ -295,6 +299,11 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 
 			Vec3i imagePos{ x, line, z };
 
+			// check the bounds
+			if (imagePos.x < 0 || imagePos.x >= image.get_width() ||
+				imagePos.y < 0 || imagePos.y >= image.get_height())
+				continue;
+
 			const bool zTest = zBuffer.TestAndWrite(imagePos);
 
 			TGAColor finalColor = tint;
@@ -302,22 +311,28 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 			if (zTest)
 			{
 				{ // barycentric coordinates (u,v,w) computation, texture coordinate (r,s) computation and texture sampling
-#if USE_INTS_FOR_TEXTURING == 1
+
 					Vec3i p{ imagePos.x, imagePos.y, imagePos.z };
-					float u = ((t.v2i - p).cross(t.v3i - p).magnitude() * 0.5f) / triangleArea;
-					float v = ((t.v1i - p).cross(t.v3i - p).magnitude() * 0.5f) / triangleArea;
+					float u = ((t.v2ss - p).cross(t.v3ss - p).magnitude() * 0.5f) / triangleArea;
+					float v = ((t.v1ss - p).cross(t.v3ss - p).magnitude() * 0.5f) / triangleArea;
 					//float w = ((t.v2i - p).cross(t.v1i - p).magnitude() * 0.5f) / triangleArea;
 					float w = 1.0f - (u + v); // this is way better, although it should technically be the same as the line above
-#else
-					Vec3f p = ConvertImageCoordsIntoModelCoords(Vec3i{ x, line, z }, image.get_width(), image.get_height(), farPlaneCoord);
-					float u = ((t.v2f - p).cross(t.v3f - p).magnitude() * 0.5f) / triangleArea;
-					float v = ((t.v1f - p).cross(t.v3f - p).magnitude() * 0.5f) / triangleArea;
-					float w = ((t.v2f - p).cross(t.v1f - p).magnitude() * 0.5f) / triangleArea;
-
-#endif
 
 					Vec2f rs = t.uv1 * u + t.uv2 * v + t.uv3 * w;
 					finalColor *= texture.get(texture.get_width() * rs.u, texture.get_height() * rs.v);
+
+					// gouraud shading
+					Vec3f pixelNormal = t.nV1i * u + t.nV2i * v + t.nV3i * w;
+					Vec3f pixelWS = t.v1ws * u + t.v2ws * v + t.v3ws * w;
+					//Vec3f lightDir = lightPos - pixelWS; // treat light as point light
+					Vec3f lightDir = lightPos ; // treat lightPos as directional light
+
+					pixelNormal.normalize();
+					lightDir.normalize();
+
+					float NdotL = std::max(pixelNormal.dot(lightDir), 0.0f);
+
+					finalColor.scale(NdotL);
 				}
 
 				image.set(imagePos.x, imagePos.y, finalColor);
@@ -360,7 +375,7 @@ void DrawTriangleMethod3_WithZ(const Triangle& t, TGAImage& image, const TGAColo
 	int farPlaneCoord, ZBufferBase& zBuffer)
 {
 	PROFILE_FUNCTION()
-	std::array vertices{ t.v1i, t.v2i, t.v2i};
+	std::array vertices{ t.v1ss, t.v2ss, t.v2ss};
 
 	// sort to find the most bottom
 	std::sort(vertices.begin(), vertices.end(), [](const Vec3i& a, const Vec3i& b) { return a.y < b.y; });

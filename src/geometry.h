@@ -35,6 +35,7 @@ template <typename T> struct Vec3 {
 	inline Vec3<T> operator ^(const Vec3<T> &v) const { return Vec3<T>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
 	inline Vec3<T> operator +(const Vec3<T> &v) const { return Vec3<T>(x+v.x, y+v.y, z+v.z); }
 	inline Vec3<T> operator -(const Vec3<T> &v) const { return Vec3<T>(x-v.x, y-v.y, z-v.z); }
+	inline Vec3<T> operator -() const { return Vec3<T>(-x, -y, -z); }
 	inline Vec3<T> operator *(float f)          const { return Vec3<T>(x*f, y*f, z*f); }
 	inline T       operator *(const Vec3<T> &v) const { return x*v.x + y*v.y + z*v.z; }
 	float magnitude () const { return std::sqrt(x*x+y*y+z*z); }
@@ -121,7 +122,8 @@ public:
 
 	Vec3<T> FromHomogeneous()
 	{
-		return Vec3<T> { m_x / m_w, m_y / m_w, m_z / m_w };
+		float w = m_w != 0.0f ? m_w : 1.0;
+		return Vec3<T> { m_x / w, m_y / w, m_z / w };
 	}
 
 	friend std::ostream& operator <<(std::ostream& os, const Vector4& vec);
@@ -163,10 +165,19 @@ class Matrix4x4
 public:
 	static constexpr size_t type_size = sizeof(T);
 	static constexpr size_t row_size = 4 * type_size;
+	static constexpr size_t mat_size = 4 * row_size;
 
 	Matrix4x4()
 	{
 		memset(raw, T{}, 16 * sizeof(T));
+	}
+
+	Matrix4x4(const Matrix4x4& mat)
+		: Matrix4x4(mat.raw) {}
+
+	Matrix4x4(const T raw_[16])
+	{
+		memcpy(raw, raw_, mat_size);
 	}
 
 	Matrix4x4(T m00, T m01, T m02, T m03, T m10, T m11, T m12, T m13, T m20, T m21, T m22, T m23, T m30, T m31, T m32, T m33)
@@ -186,6 +197,19 @@ public:
 	}
 
 	void SetIdentity();
+
+	Matrix4x4 operator*(float scaler)
+	{
+		Matrix4x4 mat {*this};
+		mat *= scaler;
+		return mat;
+	}
+
+	void operator*=(float scaler)
+	{
+		for (int i{ 0 }; i < 16; i++)
+			raw[i] *= scaler;
+	}
 
 	Matrix4x4 operator*(const Matrix4x4& mat)
 	{
@@ -239,6 +263,12 @@ public:
 	{
 		memcpy(rawMat[rowIdx], row.m_raw, 4 * sizeof(T));
 	}
+
+	void SetRow(int rowIdx, const Vec3<T>& row)
+	{
+		memcpy(rawMat[rowIdx], row.raw, 3 * sizeof(T));
+	}
+
 
 	Vector4<T> GetColumn(int columnIdx) const
 	{
