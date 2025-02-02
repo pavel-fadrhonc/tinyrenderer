@@ -38,9 +38,14 @@ struct TGAColor {
 
 	constexpr TGAColor(unsigned char R, unsigned char G, unsigned char B, unsigned char A) : b(B), g(G), r(R), a(A), bytespp(4) {	}
 
-	static inline TGAColor FromFloat(float R, float G, float B, float A)
+	static inline TGAColor FromFloat(const float R, const float G, const float B, const float A)
 	{
-		return TGAColor(static_cast<unsigned char>(B * 255), static_cast<unsigned char>(G * 255), static_cast<unsigned char>(R * 255), static_cast<unsigned char>(A * 255));
+		return TGAColor(static_cast<unsigned char>(R * 255), static_cast<unsigned char>(G * 255), static_cast<unsigned char>(B * 255), static_cast<unsigned char>(A * 255));
+	}
+
+	static inline TGAColor FromVec4(const Vec4f& vec)
+	{
+		return FromFloat(vec.x(), vec.y(), vec.z(), vec.w());
 	}
 
 	constexpr TGAColor(int v, int bpp) : val(v), bytespp(bpp) {}
@@ -67,6 +72,11 @@ struct TGAColor {
 		g = (char)((float)g * scalar);
 		b = (char)((float)b * scalar);
 		a = (char)((float)a * scalar);
+	}
+
+	Vec4f ToFloat()
+	{
+		return Vec4f{ static_cast<float>(r) / 255.0f, static_cast<float>(g) / 255.0f, static_cast<float>(b) / 255.0f, static_cast<float>(a) / 255.0f};
 	}
 
 	TGAColor operator*(const TGAColor& c)

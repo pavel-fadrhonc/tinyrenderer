@@ -1,4 +1,5 @@
 
+#include "shader.h"
 #include "z_buffer.h"
 // use the line sweeping technique where you go for each pixel of bottom line you draw a line to the top pixel
 // experimental, doesn't really draw the triangle reliably
@@ -207,23 +208,13 @@ struct Triangle
 	Vec3f v1ws;
 	Vec3f v2ws;
 	Vec3f v3ws;
-
-	// normals
-	Vec3f nV1i;
-	Vec3f nV2i;
-	Vec3f nV3i;
-
-	// uvs
-	Vec2f uv1;
-	Vec2f uv2;
-	Vec2f uv3;
 };
 
 /// <summary>
 ///	Draws the triangle given by 3 coordinates that have Z coordinate as int
 /// </summary>
 void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, const TGAColor& tint,
-	int farPlaneCoord, ZBufferBase& zBuffer, const TGAImage& texture, Vec3f lightPos)
+	int farPlaneCoord, ZBufferBase& zBuffer, IFragmentShader& fragmentShader)
 {
 #define USE_INTS_FOR_TEXTURING 1
 
@@ -318,21 +309,13 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 					//float w = ((t.v2i - p).cross(t.v1i - p).magnitude() * 0.5f) / triangleArea;
 					float w = 1.0f - (u + v); // this is way better, although it should technically be the same as the line above
 
-					Vec2f rs = t.uv1 * u + t.uv2 * v + t.uv3 * w;
-					finalColor *= texture.get(texture.get_width() * rs.u, texture.get_height() * rs.v);
+					fragmentShader.SetBarycentricCoordinates({ u, v, w });
+					const bool shouldRender = fragmentShader.fragment();
+					if (!shouldRender)
+						continue;
 
-					// gouraud shading
-					Vec3f pixelNormal = t.nV1i * u + t.nV2i * v + t.nV3i * w;
-					Vec3f pixelWS = t.v1ws * u + t.v2ws * v + t.v3ws * w;
-					//Vec3f lightDir = lightPos - pixelWS; // treat light as point light
-					Vec3f lightDir = lightPos ; // treat lightPos as directional light
-
-					pixelNormal.normalize();
-					lightDir.normalize();
-
-					float NdotL = std::max(pixelNormal.dot(lightDir), 0.0f);
-
-					finalColor.scale(NdotL);
+					Vec4f fragColor = fragmentShader.GetFinalColor();
+					finalColor = TGAColor::FromVec4(fragColor);
 				}
 
 				image.set(imagePos.x, imagePos.y, finalColor);

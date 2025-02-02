@@ -120,6 +120,16 @@ public:
 
 	T* getRaw() { return &m_raw[0]; }
 
+	Vector4& operator*(float scaler)
+	{
+		m_x *= scaler;
+		m_y *= scaler;
+		m_z *= scaler;
+		m_w *= scaler;
+
+		return *this;
+	}
+
 	Vec3<T> FromHomogeneous()
 	{
 		float w = m_w != 0.0f ? m_w : 1.0;
@@ -224,11 +234,11 @@ public:
 			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(1)),
 			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(2)),
 			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(3)),
-					    
+ 
 			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(0)),
 			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(1)),
 			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(2)),
-			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(3)),
+			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(3)),
 					    
 			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(0)),
 			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(1)),

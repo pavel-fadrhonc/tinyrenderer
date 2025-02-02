@@ -2,6 +2,8 @@
 #include "geometry.h"
 #include "random.h"
 #include "constants.h"
+#include "my_gl.h"
+#include "shader.h"
 #include "tgaimage.h"
 #include "transformations.h"
 
@@ -26,15 +28,20 @@ void DrawTriangleTest()
 
 }
 
+inline BasicGouradShader gouradShader {};
+inline IFragmentShader& fragmentShader = gouradShader;
+inline IVertexShader& vertexShader = gouradShader;
+
 void DrawTriangle_Model()
 {
 	Model headModel{ "../../../assets/models/african_head.obj" };
 	constexpr int FAR_PLANE = 1000;
 	const Vec3f LIGHT_POS = { 0.f, 0.f, 10.f };
+	const Vec3f LIGHT_COLOR = { 0.f, 0.f, 0.f };
 	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
-	constexpr Vec3f camPos = { 1.0f, 0.0f, 10.0f };
+	constexpr Vec3f camPos = { 0.0f, 0.0f, 10.0f };
 	constexpr float scale = 0.85f;
-	constexpr Vec2f offsetViewport{ 200.f, 0.f };
+	constexpr Vec2f offsetViewport{ 0.f, 0.f };
 	constexpr Vec3f modelPosition{ 0.f, 0.f, 0.f };
 
 	ZBufferBase* zBuffer = new ZBufferIntDefault;
@@ -45,6 +52,7 @@ void DrawTriangle_Model()
 	// setup necessary matrices
 	Mat4 modelMat;
 	modelMat.SetIdentity();
+	modelMat.SetIdentity();
 	modelMat *= scale;
 	modelMat.SetColumn(3, modelPosition.ToPoint());
 	Mat4 viewPortMat = getViewport(offsetViewport, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
@@ -52,6 +60,19 @@ void DrawTriangle_Model()
 	Mat4 viewMat = getLookAt(camPos, modelPosition);
 
 	Mat4 MVP = viewPortMat * projectionMat * viewMat * modelMat;
+
+
+	// setup globals
+	mgl::MVP = MVP;
+	mgl::ModelMat = modelMat;
+	mgl::ViewMat = viewMat;
+	mgl::ProjectionMat = projectionMat;
+	mgl::LightDir = LIGHT_POS;
+	mgl::LightDir.normalize();
+	mgl::LightDirColor = LIGHT_COLOR;
+
+	vertexShader.SetModel(&headModel);
+	fragmentShader.SetAlbedoTexture(&texture);
 
 	// for each face get all the triangle data and render
 	const int numFaces = headModel.nfaces();
@@ -62,30 +83,21 @@ void DrawTriangle_Model()
 		Vec3f v1 = headModel.vert(face[2]);
 		Vec3f v2 = headModel.vert(face[4]);
 
-		Vec2f uv0 = headModel.uv(face[1]);
-		Vec2f uv1 = headModel.uv(face[3]);
-		Vec2f uv2 = headModel.uv(face[5]);
-
-		Vec3f normalV0 = headModel.vnormal(face[0]);
-		Vec3f normalV1 = headModel.vnormal(face[2]);
-		Vec3f normalV2 = headModel.vnormal(face[4]);
-
 		Vec3f triangleNormal = (v2 - v0).cross(v1 - v0).normalize();
 		float shading = triangleNormal.dot(-LIGHT_POS);
 
 		if (shading < 0.0f) // backface culling
 			continue;
 
-		//TGAColor tint = TGAColor::FromFloat( shading, shading, shading, 1.0f);
 		TGAColor tint = TGAColor::FromFloat( 1.0f, 1.0f, 1.0f, 1.0f);
 
-		Vec3f transV0 = (MVP * v0.ToPoint()).FromHomogeneous();
+		Vec3f transV0 = vertexShader.vertex(i, 0);
 		Vec3i transV0i = Vec3i{ (int)transV0.x, (int)transV0.y, (int)transV0.z, };
 
-		Vec3f transV1 = (MVP * v1.ToPoint()).FromHomogeneous();
+		Vec3f transV1 = vertexShader.vertex(i, 1);
 		Vec3i transV1i = Vec3i{ (int)transV1.x, (int)transV1.y, (int)transV1.z, };
 
-		Vec3f transV2 = (MVP * v2.ToPoint()).FromHomogeneous();
+		Vec3f transV2 = vertexShader.vertex(i, 2);
 		Vec3i transV2i = Vec3i{ (int)transV2.x, (int)transV2.y, (int)transV2.z, };
 
 		Vec3f v0ws = (modelMat * v0.ToPoint()).FromHomogeneous();
@@ -97,13 +109,11 @@ void DrawTriangle_Model()
 		Triangle t
 		{
 			transV0i, transV1i,transV2i,
-			v0ws, v1ws, v2ws,
-			normalV0,normalV1,normalV2,
-			uv0, uv1, uv2
+			v0ws, v1ws, v2ws
 		};
 
 		for (int perfi = 0; perfi < PERFORMANCE_TEST_ITERATIONS; perfi++)
-			DrawTriangleMethod3_WithZ_WithTexture(t, image, tint, FAR_PLANE, *zBuffer, texture, LIGHT_POS);
+			DrawTriangleMethod3_WithZ_WithTexture(t, image, tint, FAR_PLANE, *zBuffer, fragmentShader);
 
 		//printf("Drawn face %d out of %d, progress: %.2f %% \n", i, numFaces, (static_cast<float>(i) / numFaces) * 100);
 	}

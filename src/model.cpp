@@ -4,6 +4,9 @@
 #include <sstream>
 #include <vector>
 #include "model.h"
+#include "types.h"
+
+#include <assert.h>
 
 Model::Model(const char *filename) : verts_(), faces_() {
     std::ifstream in;
@@ -57,28 +60,52 @@ Model::Model(const char *filename) : verts_(), faces_() {
 Model::~Model() {
 }
 
-int Model::nverts() {
+int Model::nverts() const{
     return (int)verts_.size();
 }
 
-int Model::nfaces() {
+int Model::nfaces() const{
     return (int)faces_.size();
 }
 
-std::vector<int> Model::face(int idx) {
+std::vector<int> Model::face(int idx) const{
     return faces_[idx];
 }
 
-Vec3f Model::vert(int i) {
+Vec3f Model::VertexForFace(int faceIdx, u8 vertexIndex) const
+{
+    assert(vertexIndex <= 2);
+        
+    return vert(face(faceIdx)[vertexIndex * 2]);
+}
+
+Vec3f Model::NormalForFaceAndVertex(int faceIdx, u8 vertexIndex) const
+{
+    assert(vertexIndex <= 2);
+
+    return vnormal(face(faceIdx)[vertexIndex * 2]);
+}
+
+Vec2f Model::UVForFaceAndVertex(int faceIdx, u8 vertexIndex) const
+{
+    assert(vertexIndex <= 2);
+
+    return uv(face(faceIdx)[vertexIndex * 2 + 1]);
+}
+
+
+Vec3f Model::vert(int i) const
+{
     return verts_[i];
 }
 
-Vec3f Model::vnormal(int i)
+Vec3f Model::vnormal(int i) const
 {
     return vnormals_[i];
 }
 
-Vec2f Model::uv(int i){
+Vec2f Model::uv(int i) const
+{
     return uvs_[i];
 }
 

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include "geometry.h"
+#include "types.h"
 
 class Model {
 private:
@@ -13,12 +14,16 @@ private:
 public:
 	Model(const char *filename);
 	~Model();
-	int nverts();
-	int nfaces();
-	Vec3f vert(int i);
-	Vec3f vnormal(int i);
-	Vec2f uv(int i); // corresponds to the vertex
-	std::vector<int> face(int idx);
+	int nverts() const;
+	int nfaces() const;
+	Vec3f vert(int i) const;
+	Vec3f vnormal(int i) const;
+	Vec2f uv(int i) const; // corresponds to the vertex
+	std::vector<int> face(int idx) const;
+
+	Vec3f VertexForFace(int faceIdx, u8 vertexIndex) const;
+	Vec3f NormalForFaceAndVertex(int faceIdx, u8 vertexIndex) const;
+	Vec2f UVForFaceAndVertex(int faceIdx, u8 vertexIndex) const;
 };
 
 #endif //__MODEL_H__
