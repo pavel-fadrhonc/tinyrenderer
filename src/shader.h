@@ -108,6 +108,26 @@ public:
 	bool fragment() override;
 };
 
+class QuantizeFragmentShader : public IFragmentShader
+{
+public:
+	QuantizeFragmentShader(const Vec3f& tint, int levels)
+		: m_Tint(tint), m_Levels(levels) {}
+
+	bool fragment() override;
+
+	void SetTint(Vec3f tint) { m_Tint = tint; }
+	void SetLevels(int levels) { m_Levels = levels; }
+private:
+	Vec3f m_Tint;
+	int m_Levels;
+};
+
 class BasicGouradShader : public BasicScreenSpace, public GouradShader {};
 
-//class QuantisizeShadar : 
+class QuantizeShadar : public BasicScreenSpace, public QuantizeFragmentShader
+{
+public:
+	QuantizeShadar(const Vec3f& tint, int levels)
+		: QuantizeFragmentShader(tint, levels) {}
+};

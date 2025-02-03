@@ -64,3 +64,17 @@ bool GouradShader::fragment()
 
 	return true;
 }
+
+bool QuantizeFragmentShader::fragment()
+{
+	Vec3f normal = GetInterpolatedData3(NORMAL_VARYING_DATA_HASH);
+	const float NdotL = std::max(normal.dot(mgl::LightDir), 0.0f);
+
+	Vec3f finalCol = m_Tint * static_cast<float>(static_cast<int>(NdotL * static_cast<float>(m_Levels)))* (1.0f / static_cast<float>(m_Levels));
+
+	m_FinalColor = Vec4f{ finalCol, 1.0f };
+
+	return true;
+}
+
+

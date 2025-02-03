@@ -28,9 +28,23 @@ void DrawTriangleTest()
 
 }
 
+#define GOURAD_SHADER_DEF 1
+#define QUANTIZE_SHADER_DEF 2
+
+#define SHADER_DEF QUANTIZE_SHADER_DEF
+
+#if SHADER_DEF == GOURAD_SHADER_DEF
 inline BasicGouradShader gouradShader {};
 inline IFragmentShader& fragmentShader = gouradShader;
 inline IVertexShader& vertexShader = gouradShader;
+#elif SHADER_DEF == QUANTIZE_SHADER_DEF
+constexpr Vec3f QUANTIZE_TINT { 0.34f, 0.58f, 0.19f };
+constexpr int QUANTIZE_LEVELS{ 5 };
+inline QuantizeShadar quantizeShader( QUANTIZE_TINT, QUANTIZE_LEVELS );
+inline IFragmentShader& fragmentShader = quantizeShader;
+inline IVertexShader& vertexShader = quantizeShader;
+#endif
+
 
 void DrawTriangle_Model()
 {
