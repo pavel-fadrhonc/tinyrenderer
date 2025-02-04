@@ -46,11 +46,13 @@ public:
 	void SetNormalTexture(TGAImage* normalTexture) { m_NormalTexture = normalTexture; }
 
 	void SetBarycentricCoordinates(Vec3f coords) { m_BaryCoords = coords; }
+	void SetMVP_IT(const Mat4& MVP_IT) { m_MVP_IT = MVP_IT; }
 protected:
 	Vec4f m_FinalColor;
 	Vec3f m_BaryCoords;
 	TGAImage* m_AlbedoTexture { nullptr };
 	TGAImage* m_NormalTexture { nullptr };
+	Mat4 m_MVP_IT;
 
 	Vec3f GetInterpolatedData3(i32 dataHash) const;
 	Vec2f GetInterpolatedData2(i32 dataHash) const;
@@ -102,7 +104,7 @@ public:
 	Vec3f vertex(u32 faceIdx, u8 vertIdx) override;
 };
 
-class GouradShader : public IFragmentShader
+class Phong : public IFragmentShader
 {
 public:
 	bool fragment() override;
@@ -123,7 +125,14 @@ private:
 	int m_Levels;
 };
 
-class BasicGouradShader : public BasicScreenSpace, public GouradShader {};
+class NormalMappedPhongFragmentShader : public IFragmentShader
+{
+	bool fragment() override;
+};
+
+class NormalMappedPhongShader : public NormalMappedPhongFragmentShader, public BasicScreenSpace {};
+
+class BasicPhongShader : public BasicScreenSpace, public Phong {};
 
 class QuantizeShadar : public BasicScreenSpace, public QuantizeFragmentShader
 {

@@ -49,7 +49,7 @@ Vec3f BasicScreenSpace::vertex(u32 faceIdx, u8 vertIdx)
 	return (mgl::MVP * vertex.ToPoint()).FromHomogeneous();
 }
 
-bool GouradShader::fragment()
+bool Phong::fragment()
 {
 	assert(m_AlbedoTexture);
 
@@ -73,6 +73,27 @@ bool QuantizeFragmentShader::fragment()
 	Vec3f finalCol = m_Tint * static_cast<float>(static_cast<int>(NdotL * static_cast<float>(m_Levels)))* (1.0f / static_cast<float>(m_Levels));
 
 	m_FinalColor = Vec4f{ finalCol, 1.0f };
+
+	return true;
+}
+
+bool NormalMappedPhongFragmentShader::fragment()
+{
+	assert(m_NormalTexture);
+	assert(m_AlbedoTexture);
+
+	Vec2f uv = GetInterpolatedData2(UV_VARYING_DATA_HASH);
+
+	const auto* albText = m_AlbedoTexture;
+	TGAColor color = albText->get(albText->get_width() * uv.u, albText->get_height() * uv.v);
+
+	const auto* normText = m_NormalTexture;
+	TGAColor normalRaw = normText->get(normText->get_width() * uv.u, albText->get_height() * uv.v);
+
+	Vec3f normal = (m_MVP_IT * normalRaw.ToFloat()).ToVec3();
+	const float NdotL = std::max(normal.dot(mgl::LightDir), 0.0f);
+
+	m_FinalColor = color.ToFloat() * NdotL;
 
 	return true;
 }

@@ -28,21 +28,26 @@ void DrawTriangleTest()
 
 }
 
-#define GOURAD_SHADER_DEF 1
+#define PHONG_SHADER_DEF 1
 #define QUANTIZE_SHADER_DEF 2
+#define PHONG_NORMAL_SHADER_DEF 3
 
-#define SHADER_DEF QUANTIZE_SHADER_DEF
+#define SHADER_DEF PHONG_NORMAL_SHADER_DEF
 
-#if SHADER_DEF == GOURAD_SHADER_DEF
-inline BasicGouradShader gouradShader {};
-inline IFragmentShader& fragmentShader = gouradShader;
-inline IVertexShader& vertexShader = gouradShader;
+#if SHADER_DEF == PHONG_SHADER_DEF
+inline BasicPhongShader phongShader {};
+inline IFragmentShader& fragmentShader = phongShader;
+inline IVertexShader& vertexShader = phongShader;
 #elif SHADER_DEF == QUANTIZE_SHADER_DEF
 constexpr Vec3f QUANTIZE_TINT { 0.34f, 0.58f, 0.19f };
 constexpr int QUANTIZE_LEVELS{ 5 };
 inline QuantizeShadar quantizeShader( QUANTIZE_TINT, QUANTIZE_LEVELS );
 inline IFragmentShader& fragmentShader = quantizeShader;
 inline IVertexShader& vertexShader = quantizeShader;
+#elif SHADER_DEF == PHONG_NORMAL_SHADER_DEF
+inline NormalMappedPhongShader normalPhongShader {};
+inline IFragmentShader& fragmentShader = normalPhongShader;
+inline IVertexShader& vertexShader = normalPhongShader;
 #endif
 
 
@@ -59,9 +64,14 @@ void DrawTriangle_Model()
 	constexpr Vec3f modelPosition{ 0.f, 0.f, 0.f };
 
 	ZBufferBase* zBuffer = new ZBufferIntDefault;
-	TGAImage texture;
-	texture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
-	texture.flip_vertically();
+	TGAImage albedoTexture;
+	albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
+	albedoTexture.flip_vertically();
+
+	TGAImage normalTexture;
+	normalTexture.read_tga_file("../../../assets/models/african_head_nm_tangent.tga");
+	normalTexture.flip_vertically();
+	fragmentShader.SetNormalTexture(&normalTexture);
 
 	// setup necessary matrices
 	Mat4 modelMat;
@@ -75,6 +85,9 @@ void DrawTriangle_Model()
 
 	Mat4 MVP = viewPortMat * projectionMat * viewMat * modelMat;
 
+	// TODO implement transponse and invert on Mat4 type
+	//fragmentShader.SetMVP_IT(MVP)
+
 
 	// setup globals
 	mgl::MVP = MVP;
@@ -86,7 +99,7 @@ void DrawTriangle_Model()
 	mgl::LightDirColor = LIGHT_COLOR;
 
 	vertexShader.SetModel(&headModel);
-	fragmentShader.SetAlbedoTexture(&texture);
+	fragmentShader.SetAlbedoTexture(&albedoTexture);
 
 	// for each face get all the triangle data and render
 	const int numFaces = headModel.nfaces();

@@ -136,6 +136,11 @@ public:
 		return Vec3<T> { m_x / w, m_y / w, m_z / w };
 	}
 
+	Vec3<T> ToVec3()
+	{
+		return Vec3<T> {m_x, m_y, m_z};
+	}
+
 	friend std::ostream& operator <<(std::ostream& os, const Vector4& vec);
 
 private:
