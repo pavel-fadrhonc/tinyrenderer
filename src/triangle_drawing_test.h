@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "triangle_drawing.h"
 #include "geometry.h"
 #include "random.h"
@@ -28,6 +30,57 @@ void DrawTriangleTest()
 
 }
 
+void MatrixInverseTest()
+{
+	std::array<float, 9> arr{ 2, 2, 3, 4, 5, 6, 7, 8, 9 };
+	using Mat3 = MatrixGeneric<float, 3, 3>;
+	Mat3 mat {arr};
+
+	using Mat2 = MatrixGeneric<float, 2, 2>;
+	auto printCofactor = [](const Mat2& mat)
+		{
+			for (int i = 0; i < 2; i++)
+			{
+	 			for (int j = 0; j < 2; j++)
+					std::cout << mat.GetElement(i, j);
+
+				std::cout << "\n";
+			}
+		};
+
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+		{
+			std::cout << "Cofactor " << i << j << "\n";
+
+			auto cofMat = mat.GetCofactor(i, j);
+			printCofactor(cofMat);
+			float determinant = cofMat.determinant();
+			std::cout << "Determinant: " << determinant << "\n";
+
+			std::cout << "\n";
+		}
+	}
+
+	auto adjoint = mat.getAdjoint();
+
+	std::cout << "adjoint matrix:\n";
+	for (int i = 0; i < 3; i++)
+	{
+		for (int j = 0; j < 3; j++)
+			std::cout << adjoint.rawMat[i][j] << ' ';
+
+		std::cout << "\n";
+	}
+
+	float determinant = mat.determinant();
+	std::cout << "determinant: " << determinant << '\n';
+
+	auto inverse = mat.GetInverse();
+	std::cout << inverse << '\n';
+}
+
 #define PHONG_SHADER_DEF 1
 #define QUANTIZE_SHADER_DEF 2
 #define PHONG_NORMAL_SHADER_DEF 3
@@ -45,7 +98,7 @@ inline QuantizeShadar quantizeShader( QUANTIZE_TINT, QUANTIZE_LEVELS );
 inline IFragmentShader& fragmentShader = quantizeShader;
 inline IVertexShader& vertexShader = quantizeShader;
 #elif SHADER_DEF == PHONG_NORMAL_SHADER_DEF
-inline NormalMappedPhongShader normalPhongShader {};
+inline NormalMappedPhongShader normalPhongShader (100.0f);
 inline IFragmentShader& fragmentShader = normalPhongShader;
 inline IVertexShader& vertexShader = normalPhongShader;
 #endif
@@ -56,15 +109,16 @@ void DrawTriangle_Model()
 	Model headModel{ "../../../assets/models/african_head.obj" };
 	constexpr int FAR_PLANE = 1000;
 	const Vec3f LIGHT_POS = { 0.f, 0.f, 10.f };
-	const Vec3f LIGHT_COLOR = { 0.f, 0.f, 0.f };
+	const Vec3f LIGHT_COLOR = { 1.f, 1.f, 1.f };
 	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
-	constexpr Vec3f camPos = { 0.0f, 0.0f, 10.0f };
+	constexpr Vec3f camPos = { 2.0f,1.5f, 10.0f };
 	constexpr float scale = 0.85f;
 	constexpr Vec2f offsetViewport{ 0.f, 0.f };
 	constexpr Vec3f modelPosition{ 0.f, 0.f, 0.f };
 
 	ZBufferBase* zBuffer = new ZBufferIntDefault;
 	TGAImage albedoTexture;
+	//albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
 	albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
 	albedoTexture.flip_vertically();
 
@@ -76,7 +130,6 @@ void DrawTriangle_Model()
 	// setup necessary matrices
 	Mat4 modelMat;
 	modelMat.SetIdentity();
-	modelMat.SetIdentity();
 	modelMat *= scale;
 	modelMat.SetColumn(3, modelPosition.ToPoint());
 	Mat4 viewPortMat = getViewport(offsetViewport, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
@@ -85,21 +138,24 @@ void DrawTriangle_Model()
 
 	Mat4 MVP = viewPortMat * projectionMat * viewMat * modelMat;
 
-	// TODO implement transponse and invert on Mat4 type
-	//fragmentShader.SetMVP_IT(MVP)
-
+	Mat4 MVP_IT = MVP.GetInverse().GetTranspose();
 
 	// setup globals
 	mgl::MVP = MVP;
+	mgl::MVP_IT = MVP_IT;
+	mgl::VP = projectionMat * viewMat;
 	mgl::ModelMat = modelMat;
 	mgl::ViewMat = viewMat;
 	mgl::ProjectionMat = projectionMat;
 	mgl::LightDir = LIGHT_POS;
 	mgl::LightDir.normalize();
 	mgl::LightDirColor = LIGHT_COLOR;
+	mgl::CameraPos = camPos;
 
 	vertexShader.SetModel(&headModel);
 	fragmentShader.SetAlbedoTexture(&albedoTexture);
+
+	Mat4 M_IT = modelMat.GetInverse().GetTranspose();
 
 	// for each face get all the triangle data and render
 	const int numFaces = headModel.nfaces();
@@ -110,8 +166,10 @@ void DrawTriangle_Model()
 		Vec3f v1 = headModel.vert(face[2]);
 		Vec3f v2 = headModel.vert(face[4]);
 
-		Vec3f triangleNormal = (v2 - v0).cross(v1 - v0).normalize();
-		float shading = triangleNormal.dot(-LIGHT_POS);
+		Vec3f triangleNormal = (v1 - v0).cross(v2 - v0).normalize();
+		const Vec3f triangleNormalWS = (modelMat * triangleNormal.ToDirection()).ToVec3().normalize();
+
+		float shading = triangleNormalWS.dot((camPos - v0).normalize());
 
 		if (shading < 0.0f) // backface culling
 			continue;
@@ -135,7 +193,7 @@ void DrawTriangle_Model()
 
 		Triangle t
 		{
-			transV0i, transV1i,transV2i,
+			transV0i, transV1i,transV2i,		
 			v0ws, v1ws, v2ws
 		};
 

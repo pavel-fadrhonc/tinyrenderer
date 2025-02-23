@@ -17,6 +17,7 @@ inline Mat4 getProjection(float cameraDistance)
 {
 	Mat4 projMat;
 	projMat.SetIdentity();
+	//projMat.SetElement(1, 1, -1.0f);
 	projMat.SetElement(3, 2, -1.0f / cameraDistance);
 	return projMat;
 }

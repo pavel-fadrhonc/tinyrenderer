@@ -1,8 +1,12 @@
 #ifndef __GEOMETRY_H__
 #define __GEOMETRY_H__
 
+#include <array>
+#include <assert.h>
 #include <cmath>
 #include <ostream>
+
+#include "types.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +36,7 @@ template <typename T> struct Vec3 {
 	constexpr Vec3() : x(0), y(0), z(0) {}
 	constexpr Vec3(T _x, T _y, T _z) : x(_x),y(_y),z(_z) {}
 	constexpr Vec3(const Vec2<T>& vec2) : x(vec2.x), y(vec2.y), z(0) {}
+	constexpr Vec3(const std::array<T, 3>& arr) : x(arr[0]), y(arr[1]), z(arr[2]) {}
 	inline Vec3<T> operator ^(const Vec3<T> &v) const { return Vec3<T>(y*v.z-z*v.y, z*v.x-x*v.z, x*v.y-y*v.x); }
 	inline Vec3<T> operator +(const Vec3<T> &v) const { return Vec3<T>(x+v.x, y+v.y, z+v.z); }
 	inline Vec3<T> operator -(const Vec3<T> &v) const { return Vec3<T>(x-v.x, y-v.y, z-v.z); }
@@ -62,11 +67,19 @@ template <typename T> struct Vec3 {
 
 	Vector4<T> ToPoint() const;
 	Vector4<T> ToDirection() const;
+
+	friend std::ostream& operator<<(std::ostream& os, const Vec3& v)
+	{
+		os << "(x: " << v.x << ", y: " << v.y << ", z: " << v.z << ")";
+
+		return os;
+	}
 };
 
 typedef Vec2<float> Vec2f;
 typedef Vec2<int>   Vec2i;
 typedef Vec3<float> Vec3f;
+typedef Vec3<double> Vec3d;
 typedef Vec3<int>   Vec3i;
 
 template <class t> std::ostream& operator<<(std::ostream& s, Vec2<t>& v) {
@@ -96,6 +109,8 @@ template
 class Vector4
 {
 public:
+	using arr_type = T[4];
+
 	Vector4 ()
 		: m_x(0.f), m_y(0.f), m_z(0.f), m_w(0.f) {}
 
@@ -118,9 +133,17 @@ public:
 	T z()  const { return m_z; }
 	T w()  const { return m_w; }
 
-	T* getRaw() { return &m_raw[0]; }
+	// T* getRaw() { return &m_raw[0]; }
+	// const T* getRaw() const { return &m_raw[0]; }
+	const arr_type& getRaw() const { return m_raw; }
+	arr_type& getRaw() { return m_raw; }
 
-	Vector4& operator*(float scaler)
+	Vector4 operator*(float scalar) const 
+	{
+		return { m_x * scalar, m_y * scalar, m_z * scalar, m_w * scalar };
+	}
+
+	Vector4& operator*=(float scaler)
 	{
 		m_x *= scaler;
 		m_y *= scaler;
@@ -128,6 +151,22 @@ public:
 		m_w *= scaler;
 
 		return *this;
+	}
+
+	Vector4<T> operator-(const Vector4<T>& v)
+	{
+		return { m_x - v.x(), m_y - v.y(), m_z - v.z(), m_w - v.w()};
+	}
+	
+
+	Vector4<T> operator+(const Vector4<T>& v)
+	{
+		return { m_x + v.x(), m_y + v.y(), m_z + v.z(), m_w + v.w()};
+	}
+
+	Vector4 operator*(Vector4 v) const
+	{
+		return { m_x * v.x(), m_y * v.y(), m_z * v.z(), m_w * v.w()};
 	}
 
 	Vec3<T> FromHomogeneous()
@@ -148,7 +187,7 @@ private:
 	{
 		struct { T m_x, m_y, m_z, m_w; };
 		struct { T m_r, m_g, m_b, m_a; };
-		T m_raw[4];
+		arr_type m_raw;
 	};
 };
 
@@ -172,101 +211,91 @@ Vector4<T> Vec3<T>::ToDirection() const
 	return Vector4<T>(x, y, z, 0.0f);
 }
 
+using Vec4f = Vector4<float>;
 
 template
-<typename T>
-class Matrix4x4
+<typename T, u8 rows, u8 columns>
+class MatrixGeneric
 {
 public:
-	static constexpr size_t type_size = sizeof(T);
-	static constexpr size_t row_size = 4 * type_size;
-	static constexpr size_t mat_size = 4 * row_size;
+	static constexpr u8 row_count = rows;
+	static constexpr u8 column_count = columns;
+	static constexpr size_t element_count = rows * columns;
 
-	Matrix4x4()
+	static constexpr size_t type_size = sizeof(T);
+	static constexpr size_t row_size = row_count * type_size;
+	static constexpr size_t mat_size = column_count * row_size;
+
+	using ColumnArrType = std::array<T, row_count>;
+
+	MatrixGeneric()
 	{
-		memset(raw, T{}, 16 * sizeof(T));
+		memset(raw, T{}, mat_size);
 	}
 
-	Matrix4x4(const Matrix4x4& mat)
-		: Matrix4x4(mat.raw) {}
+	MatrixGeneric(const MatrixGeneric& mat)
+		: MatrixGeneric(mat.raw) {}
 
-	Matrix4x4(const T raw_[16])
+	MatrixGeneric(const T raw_[element_count])
 	{
 		memcpy(raw, raw_, mat_size);
 	}
 
-	Matrix4x4(T m00, T m01, T m02, T m03, T m10, T m11, T m12, T m13, T m20, T m21, T m22, T m23, T m30, T m31, T m32, T m33)
+	MatrixGeneric(const std::array<T, element_count>& arr)
 	{
-		rawMat[0][0] = m00; rawMat[0][1] = m01; rawMat[0][2] = m02; rawMat[0][3] = m03;
-		rawMat[1][0] = m10; rawMat[1][1] = m11; rawMat[1][2] = m12; rawMat[1][3] = m13;
-		rawMat[2][0] = m20; rawMat[2][1] = m21; rawMat[2][2] = m22; rawMat[2][3] = m23;
-		rawMat[3][0] = m30; rawMat[3][1] = m31; rawMat[3][2] = m32; rawMat[3][3] = m33;
+		std::copy(arr.begin(), arr.end(), raw);
 	}
 
-	Matrix4x4(Vector4<T> row0, Vector4<T> row1, Vector4<T> row2, Vector4<T> row3)
+	void SetIdentity()
 	{
-		memcpy(rawMat[0], row0.getRaw(), row_size);
-		memcpy(rawMat[1], row1.getRaw(), row_size);
-		memcpy(rawMat[2], row2.getRaw(), row_size);
-		memcpy(rawMat[3], row3.getRaw(), row_size);
+		static_assert(row_count == column_count, "Identity is only defined for square matrices");
+
+		for (int i = 0; i < row_count; i++)
+			rawMat[i][i] = static_cast<T>(1);
 	}
 
-	void SetIdentity();
-
-	Matrix4x4 operator*(float scaler)
+	MatrixGeneric operator*(float scaler)
 	{
-		Matrix4x4 mat {*this};
+		MatrixGeneric mat{ *this };
 		mat *= scaler;
 		return mat;
 	}
 
 	void operator*=(float scaler)
 	{
-		for (int i{ 0 }; i < 16; i++)
+		for (int i{ 0 }; i < element_count; i++)
 			raw[i] *= scaler;
 	}
 
-	Matrix4x4 operator*(const Matrix4x4& mat)
+	MatrixGeneric operator*(const MatrixGeneric& mat)
 	{
-		return Matrix4x4
-		{
-			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(0)),
-			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(1)),
-			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(2)),
-			Vector4<T>{ rawMat[0] }.dot(mat.GetColumn(3)),
-					    
-			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(0)),
-			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(1)),
-			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(2)),
-			Vector4<T>{ rawMat[1] }.dot(mat.GetColumn(3)),
- 
-			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(0)),
-			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(1)),
-			Vector4<T>{ rawMat[2] }.dot(mat.GetColumn(2)),
-			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(3)),
-					    
-			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(0)),
-			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(1)),
-			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(2)),
-			Vector4<T>{ rawMat[3] }.dot(mat.GetColumn(3)),
+		static_assert(row_count == column_count);
 
-			// do I need to rawdog it? or will the generated instructions be the same
-			//rawMat[0][0] * mat.rawMat[0][0] + rawMat[0][1] * mat.rawMat[1][0] + rawMat[0][2] * mat.rawMat[2][0] + rawMat[0][3] * mat.rawMat[3][0],
-			//rawMat[1][0] * mat.rawMat[0][0] + rawMat[1][1] * mat.rawMat[1][0] + rawMat[1][2] * mat.rawMat[2][0] + rawMat[1][3] * mat.rawMat[3][0],
-			//rawMat[2][0] * mat.rawMat[0][0] + rawMat[2][1] * mat.rawMat[1][0] + rawMat[2][2] * mat.rawMat[2][0] + rawMat[2][3] * mat.rawMat[3][0],
-			//rawMat[3][0] * mat.rawMat[0][0] + rawMat[3][1] * mat.rawMat[1][0] + rawMat[3][2] * mat.rawMat[2][0] + rawMat[3][3] * mat.rawMat[3][0],
-		};
+		MatrixGeneric mat_;
+		for (int i = 0; i < row_count; i++)
+		{
+			for (int j = 0; j < row_count; j++)
+			{
+				T matElement = static_cast<T>(0);
+				for (int k = 0; k < row_count; k++)
+					matElement += rawMat[i][k] * mat.rawMat[k][j];
+
+				mat_.rawMat[i][j] = matElement;
+			}
+		}
+
+		return mat_;
 	}
 
-	Vector4<T> operator*(const Vector4<T>& vec)
+	ColumnArrType operator*(const ColumnArrType& arr)
 	{
-		return Vector4<T>
-		{
-			Vector4<T>{ rawMat[0] }.dot(vec),
-			Vector4<T>{ rawMat[1] }.dot(vec),
-			Vector4<T>{ rawMat[2] }.dot(vec),
-			Vector4<T>{ rawMat[3] }.dot(vec)
-		};
+		ColumnArrType retArr;
+
+		for (int i = 0; i < row_count; i++)
+			for (int j = 0; j < column_count; j++)
+				retArr[i] += rawMat[i][j] * arr[j];
+
+		return retArr;
 	}
 
 	T* operator[](int row)
@@ -274,50 +303,375 @@ public:
 		return rawMat[row];
 	}
 
-	void SetRow(int rowIdx, const Vector4<T>& row)
+	void SetRow(int rowIdx, T row[row_count])
 	{
-		memcpy(rawMat[rowIdx], row.m_raw, 4 * sizeof(T));
+		memcpy(rawMat[rowIdx], row, row_count * sizeof(T));
 	}
 
-	void SetRow(int rowIdx, const Vec3<T>& row)
+	void SetRow(int rowIdx, std::array<T, row_count> arr)
 	{
-		memcpy(rawMat[rowIdx], row.raw, 3 * sizeof(T));
+		SetRow(rowIdx, arr.data());
 	}
 
-
-	Vector4<T> GetColumn(int columnIdx) const
+	std::array<T, row_count> GetColumn(int columnIdx) const
 	{
-		return Vector4<T> { rawMat[0][columnIdx], rawMat[1][columnIdx], rawMat[2][columnIdx], rawMat[3][columnIdx] };
+		assert(columnIdx < column_count);
+
+		std::array<T, row_count> column;
+		for (int i = 0; i < row_count; i++)
+		{
+			column[i] = rawMat[i][columnIdx];
+		}
+
+		return column;
 	}
 
-	void SetColumn(int columnIdx, const Vector4<T>& column)
+	void SetColumn(int columnIdx, const std::array<T, row_count>& arr)
 	{
-		rawMat[0][columnIdx] = column.x();
-		rawMat[1][columnIdx] = column.y();
-		rawMat[2][columnIdx] = column.z();
-		rawMat[3][columnIdx] = column.w();
+		assert(columnIdx < column_count);
+
+		for (int i = 0; i < row_count; i++)
+		{
+			rawMat[i][columnIdx] = arr[i];
+		}
 	}
 
 	void SetElement(int row, int column, T value)
 	{
+		assert(row < row_count && column < column_count);
+
 		rawMat[row][column] = value;
 	}
 
+	MatrixGeneric<T, column_count, row_count> GetTranspose() const
+	{
+		MatrixGeneric<T, column_count, row_count> transposed;
+		for (int i = 0; i < row_count; i++)
+			for (int j = 0; j < column_count; j++)
+				transposed[j][i] = rawMat[i][j];
+
+		return transposed;
+	}
+
+	MatrixGeneric<T, row_count - 1, column_count - 1> GetCofactor(int x, int y) const
+	{
+		assert(row_count == column_count);
+
+		MatrixGeneric<T, row_count - 1, column_count - 1> cofMat{};
+		size_t i = 0, j = 0; // Track rows and columns of cofMat
+
+		// Loop through all elements of the matrix
+		for (size_t row = 0; row < row_count; row++) {
+			for (size_t col = 0; col < column_count; col++) {
+				// Skip the current row and column
+				if (row != x && col != y) {
+					cofMat.SetElement(i, j++, GetElement(row, col));
+
+					// Move to the next row in temp if the column is filled
+					if (j == row_count - 1) {
+						j = 0;
+						i++;
+					}
+				}
+			}
+		}
+
+		return cofMat;
+	}
+
+	//std::enable_if_t<(row_count != 1 && column_count != 1), float>
+	T determinant() const
+	{
+		static_assert(row_count == column_count);
+
+		constexpr size_t n = row_count;
+
+		// Base case for a 1x1 matrix
+		if constexpr (row_count == 1 && column_count == 1)
+			return GetElement(0, 0);
+		else // it is important for this so the else clause doesn't compile for the row and column == 1 case
+		{
+			float D = 0; // Initialize determinant
+			int sign = 1; // Alternating sign
+
+			using MinorMatrix_t = MatrixGeneric<T, row_count - 1, column_count - 1>;
+			// Loop through each element in the first row
+			for (size_t f = 0; f < n; f++) {
+				// Get the cofactor matrix excluding row 0 and column f
+				MinorMatrix_t temp = GetCofactor(0, f);
+
+				// Recursive expansion using the formula: D += sign * element * determinant(cofactor)
+				D += sign * GetElement(0, f) * temp.determinant();
+
+				// Alternate the sign for the next term
+				sign = -sign;
+			}
+
+			return D; // Return the calculated determinant
+		}
+	}
+
+	// std::enable_if_t<(row_count == 1 && column_count == 1), float>
+	// determinant() const
+	// {
+	// 	return GetElement(0, 0);
+	// }
+
+	// template<typename TDet>
+	// float determinant<TDet, 1, 1>(const MatrixGeneric<TDet, 1, 1>& mat) const
+	// {
+	// 	return mat.GetElement(0, 0);
+	// }
+
+	// template<typename TDet, size_t rows_det = 1, size_t cols_det = 1>
+	// float determinant(const MatrixGeneric<TDet, rows_det, cols_det>& mat) const
+	// {
+	// 	return mat.GetElement(0, 0);
+	// }
+
+	MatrixGeneric getAdjoint() const {
+		assert(row_count == column_count);
+		size_t N = row_count;
+		if (N == 1) 
+		{
+			MatrixGeneric adj;
+			adj[0][0] = 1; // Adjoint of a 1x1 matrix is simply 1
+			return adj;
+		}
+
+		MatrixGeneric adj; // Create a matrix to store adjoint
+		int sign = 1; // Sign alternates for each element
+
+		for (size_t i = 0; i < N; i++) 
+		{
+			for (size_t j = 0; j < N; j++) 
+			{
+				// Calculate cofactor matrix for element (i, j)
+				MatrixGeneric<T, row_count - 1, column_count - 1> temp = GetCofactor(i, j);
+
+				// Determine the sign of the current element
+				sign = ((i + j) % 2 == 0) ? 1 : -1;
+
+				// Transpose while assigning adjoint (adj[j][i] instead of adj[i][j])
+				adj[j][i] = sign * temp.determinant();
+			}
+		}
+		return adj; // Return the computed adjoint matrix
+	}
+
+
+	MatrixGeneric GetInverse() const
+	{
+		float det = determinant();
+		if (det == 0.f)
+			throw std::runtime_error("Matrix is singular, inverse doesn't exist");
+
+		MatrixGeneric adj = getAdjoint();
+		MatrixGeneric inverse;
+
+		for (size_t i = 0; i < row_count; i++) 
+			for (size_t j = 0; j < column_count; j++) 
+				inverse[i][j] = adj.rawMat[i][j] / det;
+
+		return inverse;
+	}
+
+	T GetElement(size_t row, size_t column) const { return rawMat[row][column]; }
+
 	union
 	{
-	T raw[4 * 4];
-	T rawMat[4][4]; // [row][column]
+		T raw[row_count * column_count];
+		T rawMat[row_count][column_count]; // [row][column]
 	};
+
+	friend std::ostream& operator<<( std::ostream& os, const MatrixGeneric& mat)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++)
+				os << mat.rawMat[i][j] << ' ';
+
+			os << "\n";
+		}
+
+		return os;
+	}
 };
 
 template <typename T>
-void Matrix4x4<T>::SetIdentity()
+class Matrix3x3 : public MatrixGeneric<T, 3, 3>
 {
-	rawMat[0][0] = 1.f;
-	rawMat[1][1] = 1.f;
-	rawMat[2][2] = 1.f;
-	rawMat[3][3] = 1.f;
-}
+	using BaseClassType = MatrixGeneric<T, 3, 3>;
+
+public:
+	Matrix3x3(): BaseClassType() {}
+	Matrix3x3(const BaseClassType& mat): BaseClassType(mat) {}
+
+	void SetColumn(int colIdx, Vec3<T> vec)
+	{
+		BaseClassType::SetColumn(colIdx, std::array<T, 3> {vec.x, vec.y, vec.z});
+	}
+
+	Vec3<T> GetColumn(int colIdx)
+	{
+		return Vec3<T>(BaseClassType::GetColumn(colIdx));
+	}
+
+	Vec3<T> operator*(const Vec3<T>& vec)
+	{
+		return BaseClassType::operator*(std::array<T, 3> {vec.x, vec.y, vec.z});
+	}
+
+	void SetRow(int rowIdx, Vec3<T> row)
+	{
+		BaseClassType::SetRow(rowIdx, std::array<T, 3> {row.x, row.y, row.z});
+	}
+};
+
+using Mat3f = Matrix3x3<float>;
+using Mat3d = Matrix3x3<double>;
+
+template
+<typename T>
+class Matrix4x4 : public MatrixGeneric<T, 4, 4>
+{
+public:
+	using BaseClassType = MatrixGeneric<T, 4, 4>;
+
+	Matrix4x4(): BaseClassType() {}
+
+	Matrix4x4(const BaseClassType& matGeneric) : BaseClassType(matGeneric) {}
+
+	Matrix4x4(T m00, T m01, T m02, T m03, T m10, T m11, T m12, T m13, T m20, T m21, T m22, T m23, T m30, T m31, T m32, T m33)
+	{
+		BaseClassType::BaseClassType::rawMat[0][0] = m00; BaseClassType::rawMat[0][1] = m01; BaseClassType::rawMat[0][2] = m02; BaseClassType::rawMat[0][3] = m03;
+		BaseClassType::rawMat[1][0] = m10; BaseClassType::rawMat[1][1] = m11; BaseClassType::rawMat[1][2] = m12; BaseClassType::rawMat[1][3] = m13;
+		BaseClassType::rawMat[2][0] = m20; BaseClassType::rawMat[2][1] = m21; BaseClassType::rawMat[2][2] = m22; BaseClassType::rawMat[2][3] = m23;
+		BaseClassType::rawMat[3][0] = m30; BaseClassType::rawMat[3][1] = m31; BaseClassType::rawMat[3][2] = m32; BaseClassType::rawMat[3][3] = m33;
+	}
+
+	Matrix4x4(Vector4<T> row0, Vector4<T> row1, Vector4<T> row2, Vector4<T> row3)
+	{
+		memcpy(BaseClassType::rawMat[0], row0.getRaw(), BaseClassType::row_size);
+		memcpy(BaseClassType::rawMat[1], row1.getRaw(), BaseClassType::row_size);
+		memcpy(BaseClassType::rawMat[2], row2.getRaw(), BaseClassType::row_size);
+		memcpy(BaseClassType::rawMat[3], row3.getRaw(), BaseClassType::row_size);
+	}
+	
+	Vector4<T> operator*(const Vector4<T>& vec)
+	{
+		return Vector4<T>
+		{
+			Vector4<T>{ BaseClassType::rawMat[0] }.dot(vec),
+			Vector4<T>{ BaseClassType::rawMat[1] }.dot(vec),
+			Vector4<T>{ BaseClassType::rawMat[2] }.dot(vec),
+			Vector4<T>{ BaseClassType::rawMat[3] }.dot(vec)
+		};
+	}
+
+
+	Matrix4x4 operator*(const Matrix4x4& mat) {	return BaseClassType::operator*(mat); }
+
+	Matrix4x4 operator*(float scaler) { return BaseClassType::operator*(scaler); }
+
+	void operator*=(float scaler) { return BaseClassType::operator*=(scaler); }
+
+	
+	Matrix4x4 GetInverse()
+	{
+		// taken from glm
+#define INVERSE_IMPLEMENTATION_GLM 0
+#define INVERSE_IMPLEMENTATION_BYHAND 1
+#define INVERSE_IMPLEMENTATION INVERSE_IMPLEMENTATION_BYHAND
+
+#if INVERSE_IMPLEMENTATION == INVERSE_IMPLEMENTATION_GLM
+
+		T Coef00 = BaseClassType::rawMat[2][2] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][2] * BaseClassType::rawMat[2][3];
+		T Coef02 = BaseClassType::rawMat[1][2] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][2] * BaseClassType::rawMat[1][3];
+		T Coef03 = BaseClassType::rawMat[1][2] * BaseClassType::rawMat[2][3] - BaseClassType::rawMat[2][2] * BaseClassType::rawMat[1][3];
+
+		T Coef04 = BaseClassType::rawMat[2][1] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][1] * BaseClassType::rawMat[2][3];
+		T Coef06 = BaseClassType::rawMat[1][1] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][1] * BaseClassType::rawMat[1][3];
+		T Coef07 = BaseClassType::rawMat[1][1] * BaseClassType::rawMat[2][3] - BaseClassType::rawMat[2][1] * BaseClassType::rawMat[1][3];
+
+		T Coef08 = BaseClassType::rawMat[2][1] * BaseClassType::rawMat[3][2] - BaseClassType::rawMat[3][1] * BaseClassType::rawMat[2][2];
+		T Coef10 = BaseClassType::rawMat[1][1] * BaseClassType::rawMat[3][2] - BaseClassType::rawMat[3][1] * BaseClassType::rawMat[1][2];
+		T Coef11 = BaseClassType::rawMat[1][1] * BaseClassType::rawMat[2][2] - BaseClassType::rawMat[2][1] * BaseClassType::rawMat[1][2];
+
+		T Coef12 = BaseClassType::rawMat[2][0] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[2][3];
+		T Coef14 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[3][3] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[1][3];
+		T Coef15 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[2][3] - BaseClassType::rawMat[2][0] * BaseClassType::rawMat[1][3];
+
+		T Coef16 = BaseClassType::rawMat[2][0] * BaseClassType::rawMat[3][2] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[2][2];
+		T Coef18 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[3][2] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[1][2];
+		T Coef19 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[2][2] - BaseClassType::rawMat[2][0] * BaseClassType::rawMat[1][2];
+
+		T Coef20 = BaseClassType::rawMat[2][0] * BaseClassType::rawMat[3][1] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[2][1];
+		T Coef22 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[3][1] - BaseClassType::rawMat[3][0] * BaseClassType::rawMat[1][1];
+		T Coef23 = BaseClassType::rawMat[1][0] * BaseClassType::rawMat[2][1] - BaseClassType::rawMat[2][0] * BaseClassType::rawMat[1][1];
+
+		Vector4<T> Fac0(Coef00, Coef00, Coef02, Coef03);
+		Vector4<T> Fac1(Coef04, Coef04, Coef06, Coef07);
+		Vector4<T> Fac2(Coef08, Coef08, Coef10, Coef11);
+		Vector4<T> Fac3(Coef12, Coef12, Coef14, Coef15);
+		Vector4<T> Fac4(Coef16, Coef16, Coef18, Coef19);
+		Vector4<T> Fac5(Coef20, Coef20, Coef22, Coef23);
+
+		Vector4<T> Vec0(BaseClassType::rawMat[1][0], BaseClassType::rawMat[0][0], BaseClassType::rawMat[0][0], BaseClassType::rawMat[0][0]);
+		Vector4<T> Vec1(BaseClassType::rawMat[1][1], BaseClassType::rawMat[0][1], BaseClassType::rawMat[0][1], BaseClassType::rawMat[0][1]);
+		Vector4<T> Vec2(BaseClassType::rawMat[1][2], BaseClassType::rawMat[0][2], BaseClassType::rawMat[0][2], BaseClassType::rawMat[0][2]);
+		Vector4<T> Vec3(BaseClassType::rawMat[1][3], BaseClassType::rawMat[0][3], BaseClassType::rawMat[0][3], BaseClassType::rawMat[0][3]);
+
+		Vector4<T> Inv0(Vec1 * Fac0 - Vec2 * Fac1 + Vec3 * Fac2);
+		Vector4<T> Inv1(Vec0 * Fac0 - Vec2 * Fac3 + Vec3 * Fac4);
+		Vector4<T> Inv2(Vec0 * Fac1 - Vec1 * Fac3 + Vec3 * Fac5);
+		Vector4<T> Inv3(Vec0 * Fac2 - Vec1 * Fac4 + Vec2 * Fac5);
+
+		Vector4<T> SignA(+1, -1, +1, -1);
+		Vector4<T> SignB(-1, +1, -1, +1);
+
+		Matrix4x4<T> Inverse(Inv0 * SignA, Inv1 * SignB, Inv2 * SignA, Inv3 * SignB);
+		Inverse = Inverse.GetTranspose();
+
+		Vector4<T> Row0(Inverse[0][0], Inverse[1][0], Inverse[2][0], Inverse[3][0]);
+
+		Vector4<T> Dot0(Vector4<T>(BaseClassType::rawMat[0]) * Row0);
+		T Dot1 = (Dot0.x() + Dot0.y()) + (Dot0.z() + Dot0.w());
+
+		T OneOverDeterminant = static_cast<T>(1) / Dot1;
+
+		return Inverse * OneOverDeterminant;
+#elif INVERSE_IMPLEMENTATION == INVERSE_IMPLEMENTATION_BYHAND
+		return BaseClassType::GetInverse();
+
+#endif
+
+	}
+
+	Matrix4x4 GetTranspose()
+	{
+		Matrix4x4 transposed;
+		transposed.SetColumn(0, BaseClassType::rawMat[0]);
+		transposed.SetColumn(1, BaseClassType::rawMat[1]);
+		transposed.SetColumn(2, BaseClassType::rawMat[2]);
+		transposed.SetColumn(3, BaseClassType::rawMat[3]);
+
+		return transposed;
+	}
+
+	void SetColumn(int column_idx, Vector4<T> column)
+	{
+		BaseClassType::SetColumn(column_idx, std::to_array<T, BaseClassType::row_count>(column.getRaw()));
+	}
+
+	void SetRow(int rowIdx, const Vec3<T>& row)
+	{
+		memcpy(BaseClassType::rawMat[rowIdx], row.raw, 3 * sizeof(T));
+	}
+
+};
+
+
 
 using Vec4f = Vector4<float>;
 using Mat4 = Matrix4x4<float>;

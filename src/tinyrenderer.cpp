@@ -18,6 +18,8 @@ int main(int argc, char** argv)
 
 	DrawTriangle_Model();
 
+	//MatrixInverseTest();
+
 	//DrawTriangleTest();
 	//DrawModel_wireframe();
 	//DrawLineTest3();

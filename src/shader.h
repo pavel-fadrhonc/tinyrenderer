@@ -6,14 +6,18 @@
 #include "model.h"
 #include "tgaimage.h"
 
-constexpr i32 NORMAL_VARYING_DATA_HASH = 1;
+constexpr i32 NORMAL_NDC_VARYING_DATA_HASH = 1;
 constexpr i32 UV_VARYING_DATA_HASH = 2;
+constexpr i32 VERTEX_WS_VARYING_DATA_HASH = 3;
+constexpr i32 VERTEX_CS_VARYING_DATA_HASH = 4;
+constexpr i32 VERTEX_NDC_VARYING_DATA_HASH = 5;
 
 class IShaderBase
 {
 public:
 	template<typename DataType>
 	using VertexDataContainer = std::array<DataType, 3>;
+	using Vec4Container = VertexDataContainer < Vec4f> ;
 	using Vec3Container = VertexDataContainer<Vec3f>;
 	using Vec2Container = VertexDataContainer<Vec2f>;
 	using FloatContainer = VertexDataContainer<float>;
@@ -23,9 +27,11 @@ public:
 	using VaryingDataContainer1 = VaryingDataContainer<float>;
 	using VaryingDataContainer2 = VaryingDataContainer<Vec2f>;
 	using VaryingDataContainer3 = VaryingDataContainer<Vec3f>;
+	using VaryingDataContainer4 = VaryingDataContainer<Vec4f>;
 
 
 protected:
+	std::map<i32, Vec4Container> m_VaryingData4;
 	std::map<i32, Vec3Container> m_VaryingData3;
 	std::map<i32, Vec2Container> m_VaryingData2;
 	std::map<i32, FloatContainer> m_VaryingData1;
@@ -46,17 +52,30 @@ public:
 	void SetNormalTexture(TGAImage* normalTexture) { m_NormalTexture = normalTexture; }
 
 	void SetBarycentricCoordinates(Vec3f coords) { m_BaryCoords = coords; }
-	void SetMVP_IT(const Mat4& MVP_IT) { m_MVP_IT = MVP_IT; }
 protected:
 	Vec4f m_FinalColor;
 	Vec3f m_BaryCoords;
 	TGAImage* m_AlbedoTexture { nullptr };
 	TGAImage* m_NormalTexture { nullptr };
-	Mat4 m_MVP_IT;
 
+	Vec4f GetInterpolatedData4(i32 dataHash) const;
 	Vec3f GetInterpolatedData3(i32 dataHash) const;
 	Vec2f GetInterpolatedData2(i32 dataHash) const;
 	float GetInterpolatedData1(i32 dataHash) const;
+
+	Vec2f GetVaryingData2(i32 dataHash, u8 vertIndex) const;
+	Vec3f GetVaryingData3(i32 dataHash, u8 vertIndex) const;
+	Vec4f GetVaryingData4(i32 dataHash, u8 vertIndex) const;
+
+	template<typename TDataType>
+	TDataType GetVaryingData(i32 dataHash, const VaryingDataContainer<TDataType>& container, u8 vertIndex) const
+	{
+		assert(container.contains(dataHash));
+		assert(vertIndex < 3);
+
+		const auto& vertexData = container.at(dataHash);
+		return vertexData[vertIndex];
+	}
 	
 	template<typename TDataType>
 	TDataType GetInterpolatedData(i32 dataHash, const VaryingDataContainer<TDataType>& container) const
@@ -83,6 +102,7 @@ public:
 protected:
 	Model* m_Model {nullptr};
 
+	void SetVaryingData4(i32 hash, u8 vertexIdx, const Vec4f& data);
 	void SetVaryingData3(i32 hash, u8 vertexIdx, const Vec3f& data);
 	void SetVaryingData2(i32 hash, u8 vertexIdx, const Vec2f& data);
 	void SetVaryingData1(i32 hash, u8 vertexIdx, const float& data);
@@ -127,10 +147,21 @@ private:
 
 class NormalMappedPhongFragmentShader : public IFragmentShader
 {
+public:
+	NormalMappedPhongFragmentShader(float shininess)
+		: m_shininess(shininess) {}
+	 
 	bool fragment() override;
+
+	float m_shininess;
 };
 
-class NormalMappedPhongShader : public NormalMappedPhongFragmentShader, public BasicScreenSpace {};
+class NormalMappedPhongShader : public NormalMappedPhongFragmentShader, public BasicScreenSpace
+{
+public:
+	NormalMappedPhongShader(float shininess)
+		: NormalMappedPhongFragmentShader(shininess) {}
+};
 
 class BasicPhongShader : public BasicScreenSpace, public Phong {};
 
