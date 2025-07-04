@@ -200,14 +200,14 @@ void DrawTriangleMethod3_2DCoords(const Vec3i& v1_, const Vec3i& v2_, const Vec3
 struct Triangle
 {
 	// screen space positions
-	Vec3i v1ss;
-	Vec3i v2ss;
-	Vec3i v3ss;
+	Vec3f v1ss;
+	Vec3f v2ss;
+	Vec3f v3ss;
 
 	// world space positions
-	Vec3f v1ws;
-	Vec3f v2ws;
-	Vec3f v3ws;
+	// Vec3f v1ws;
+	// Vec3f v2ws;
+	// Vec3f v3ws;
 };
 
 /// <summary>
@@ -222,13 +222,13 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 	std::array vertices{ t.v1ss, t.v2ss, t.v3ss };
 
 	// sort to find the most bottom
-	std::sort(vertices.begin(), vertices.end(), [](const Vec3i& a, const Vec3i& b) { return a.y < b.y; });
-	Vec3i a = vertices[0];	// most bottom point
-	Vec3i b = vertices[1];	// second most bottom point
-	Vec3i c = vertices[2];	// top point
+	std::sort(vertices.begin(), vertices.end(), [](const Vec3f& a, const Vec3f& b) { return a.y < b.y; });
+	Vec3f a = vertices[0];	// most bottom point
+	Vec3f b = vertices[1];	// second most bottom point
+	Vec3f c = vertices[2];	// top point
 
 	// make the triangle vertices go in CCW order
-	Vec3i normal = (c - a).cross(b - a);
+	Vec3f normal = (c - a).cross(b - a);
 	if (normal.z > 0)
 		std::swap(b, c);
 
@@ -239,8 +239,8 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 	// and then draw all pixels on the x axis in between.
 	// Once you hit the end of one of these lines, continue with the other one connected (the third, remaining)
 
-	Vec3i firstLine = c - a;
-	Vec3i secondLine = b - a;
+	Vec3f firstLine = c - a;
+	Vec3f secondLine = b - a;
 
 	// this the amount of x pixels added when we advance one row up
 	float dxFirst = firstLine.y > 0 ? static_cast<float>(firstLine.x) / static_cast<float>(firstLine.y) : 0;
@@ -255,40 +255,40 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 	// we start from vertex a both and end line but eventually one of these will change depending on
 	// if line a->c ends sooner or a->b ends sooner
 
-	Vec3i startPointLeft = a;
-	Vec3i startPointRight = a;
+	Vec3f startPointLeft = a;
+	Vec3f startPointRight = a;
 
 	// once we have a as most bottom and vertices in CCW order we always draw from the a->c line to the a->b line
 	// then, depending on whether b.y is lower then c.y the a->c line switches to c->b line or a->b line switches to b->c line
 	// and the starting points for start or end line has to be adjusted accordingly
-	for (int line = a.y; line < topLine; )
+	for (float line = a.y; line < topLine; )
 	{
 		// translate from absolute image space into relative triangle space
-		int lineLeftYRelative = line - startPointLeft.y;
-		int lineRightYRelative = line - startPointRight.y;
+		float lineLeftYRelative = line - startPointLeft.y;
+		float lineRightYRelative = line - startPointRight.y;
 
 		// determine the start and end of the line
 		int xStart = startPointLeft.x + static_cast<int>(dxFirst * static_cast<float>(lineLeftYRelative));
 		int xEnd = startPointRight.x + static_cast<int>(dxSecond * static_cast<float>(lineRightYRelative));
 
-		int zStart = startPointLeft.z + static_cast<int>(dzFirst * static_cast<float>(lineLeftYRelative));
-		int zEnd = startPointRight.z + static_cast<int>(dzSecond * static_cast<float>(lineRightYRelative));
+		float zStart = startPointLeft.z + static_cast<float>(dzFirst * static_cast<float>(lineLeftYRelative));
+		float zEnd = startPointRight.z + static_cast<float>(dzSecond * static_cast<float>(lineRightYRelative));
 
 		//float leftLineT = lineLeftYRelative / leftLine.y;
 		//float rightLineT = lineRightYRelative / rightLine.y;
 
 
 		// draw the whole line
-		int xDiff = xEnd - xStart;
-		int zDiff = zEnd - zStart;
-		for (int x = xStart; x <= xEnd; x++)
+		float xDiff = xEnd - xStart;
+		float zDiff = zEnd - zStart;
+		for (float x = xStart; x <= xEnd; x++)
 		{
 			float xT = xDiff != 0 ? (float)(x - xStart) / (float)xDiff : 0.f;
 			float zFloat = xT * zDiff + zStart;
 			int z = (int)zFloat;
 			float z01 = zFloat / (float)farPlaneCoord;
 
-			Vec3i imagePos{ x, line, z };
+			Vec3i imagePos{ (int)x, (int)line, - (int) (zFloat * farPlaneCoord) };
 
 			// check the bounds
 			if (imagePos.x < 0 || imagePos.x >= image.get_width() ||
@@ -303,7 +303,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 			{
 				{ // barycentric coordinates (u,v,w) computation, texture coordinate (r,s) computation and texture sampling
 
-					Vec3i p{ imagePos.x, imagePos.y, imagePos.z };
+					Vec3f p{ x, line, zFloat };
 					float u = ((t.v2ss - p).cross(t.v3ss - p).magnitude() * 0.5f) / triangleArea;
 					float v = ((t.v1ss - p).cross(t.v3ss - p).magnitude() * 0.5f) / triangleArea;
 					//float w = ((t.v2i - p).cross(t.v1i - p).magnitude() * 0.5f) / triangleArea;
@@ -327,7 +327,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 		{
 			if (line > c.y)
 			{
-				Vec3i thirdLine = b - c;
+				Vec3f thirdLine = b - c;
 				float dxThird = static_cast<float>(thirdLine.x) / static_cast<float>(thirdLine.y);
 				float dzThird = static_cast<float>(thirdLine.z) / static_cast<float>(thirdLine.y);
 
@@ -338,7 +338,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 			}
 			else if (line > b.y)
 			{
-				Vec3i thirdLine = c - b;
+				Vec3f thirdLine = c - b;
 				float dxThird = thirdLine.y > 0 ? static_cast<float>(thirdLine.x) / static_cast<float>(thirdLine.y) : 0;
 				float dzThird = thirdLine.y > 0 ? static_cast<float>(thirdLine.z) / static_cast<float>(thirdLine.y) : 0;
 
@@ -357,6 +357,7 @@ void DrawTriangleMethod3_WithZ_WithTexture(const Triangle& t, TGAImage& image, c
 void DrawTriangleMethod3_WithZ(const Triangle& t, TGAImage& image, const TGAColor& color, 
 	int farPlaneCoord, ZBufferBase& zBuffer)
 {
+#if 0
 	PROFILE_FUNCTION()
 	std::array vertices{ t.v1ss, t.v2ss, t.v2ss};
 
@@ -456,6 +457,7 @@ void DrawTriangleMethod3_WithZ(const Triangle& t, TGAImage& image, const TGAColo
 			}
 		}
 	}
+#endif
 }
 
 void triangle_reference(Vec2i t0, Vec2i t1, Vec2i t2, TGAImage& image, TGAColor color) {

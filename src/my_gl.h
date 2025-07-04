@@ -8,6 +8,7 @@ namespace mgl
 	inline Mat4 MVP_IT;
 	inline Mat4 ModelMat;
 	inline Mat4 ViewMat;
+	inline Mat4 ViewportMat;
 	inline Mat4 ProjectionMat;
 	inline Mat4 VP;
 

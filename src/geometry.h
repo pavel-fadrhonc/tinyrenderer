@@ -1,6 +1,7 @@
 #ifndef __GEOMETRY_H__
 #define __GEOMETRY_H__
 
+#include <algorithm>
 #include <array>
 #include <assert.h>
 #include <cmath>
@@ -41,8 +42,10 @@ template <typename T> struct Vec3 {
 	inline Vec3<T> operator +(const Vec3<T> &v) const { return Vec3<T>(x+v.x, y+v.y, z+v.z); }
 	inline Vec3<T> operator -(const Vec3<T> &v) const { return Vec3<T>(x-v.x, y-v.y, z-v.z); }
 	inline Vec3<T> operator -() const { return Vec3<T>(-x, -y, -z); }
+	inline Vec3<T> operator -(const float v) { return Vec3{ x - v, y - v, z - v }; }
 	inline Vec3<T> operator *(float f)          const { return Vec3<T>(x*f, y*f, z*f); }
 	inline T       operator *(const Vec3<T> &v) const { return x*v.x + y*v.y + z*v.z; }
+	inline Vec3 operator / (const float f) const { return { x/f, y/f, z/f }; }
 	float magnitude () const { return std::sqrt(x*x+y*y+z*z); }
 	Vec3<T> & normalize(T l=1) { *this = (*this)*(l/magnitude()); return *this; }
 	template <class > friend std::ostream& operator<<(std::ostream& s, Vec3<T>& v);
@@ -83,12 +86,12 @@ typedef Vec3<double> Vec3d;
 typedef Vec3<int>   Vec3i;
 
 template <class t> std::ostream& operator<<(std::ostream& s, Vec2<t>& v) {
-	s << "(" << v.x << ", " << v.y << ")\n";
+	s << "(" << v.x << ", " << v.y << ")";
 	return s;
 }
 
 template <class t> std::ostream& operator<<(std::ostream& s, Vec3<t>& v) {
-	s << "(" << v.x << ", " << v.y << ", " << v.z << ")\n";
+	s << "(" << v.x << ", " << v.y << ", " << v.z << ")";
 	return s;
 }
 
@@ -180,7 +183,21 @@ public:
 		return Vec3<T> {m_x, m_y, m_z};
 	}
 
-	friend std::ostream& operator <<(std::ostream& os, const Vector4& vec);
+	void Clamp01()
+	{
+		m_x = std::clamp(m_x, 0.0f, 1.0f);
+		m_y = std::clamp(m_y, 0.0f, 1.0f);
+		m_z = std::clamp(m_z, 0.0f, 1.0f);
+		m_w = std::clamp(m_w, 0.0f, 1.0f);
+	}
+
+	//friend std::ostream& operator <<(std::ostream& os, const Vector4& vec);
+	inline friend std::ostream& operator <<(std::ostream& os, const Vector4<T>& vec)
+	{
+		os << '(' << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ", " << vec.m_w << ')';
+
+		return os;
+	}
 
 private:
 	union
@@ -191,13 +208,13 @@ private:
 	};
 };
 
-template <typename T>
-inline std::ostream& operator <<(std::ostream& os, const Vector4<T>& vec)
-{
-	os << '(' << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ", " << vec.m_w << ')';
-
-	return os;
-}
+// template <typename T>
+// inline std::ostream& operator <<(std::ostream& os, const Vector4<T>& vec)
+// {
+// 	os << '(' << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ", " << vec.m_w << ')';
+//
+// 	return os;
+// }
 
 template <typename T>
 Vector4<T> Vec3<T>::ToPoint() const
@@ -212,6 +229,15 @@ Vector4<T> Vec3<T>::ToDirection() const
 }
 
 using Vec4f = Vector4<float>;
+
+
+// template <float>
+// inline std::ostream& operator <<(std::ostream& os, const Vec4f& vec)
+// {
+// 	os << '(' << vec.m_x << ", " << vec.m_y << ", " << vec.m_z << ", " << vec.m_w << ')';
+//
+// 	return os;
+// }
 
 template
 <typename T, u8 rows, u8 columns>
@@ -570,13 +596,11 @@ public:
 	}
 
 
+	using BaseClassType::operator*;
+	using BaseClassType::operator*=;
+
 	Matrix4x4 operator*(const Matrix4x4& mat) {	return BaseClassType::operator*(mat); }
 
-	Matrix4x4 operator*(float scaler) { return BaseClassType::operator*(scaler); }
-
-	void operator*=(float scaler) { return BaseClassType::operator*=(scaler); }
-
-	
 	Matrix4x4 GetInverse()
 	{
 		// taken from glm

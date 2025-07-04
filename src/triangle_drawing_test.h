@@ -20,9 +20,9 @@ void DrawTriangleTest()
 
 	ZBuffer2D zbuffer;
 
-	DrawTriangleMethod3_WithZ({ t1[0], t1[1], t1[2] } , image, white, FAR_PLANE, zbuffer);
-	DrawTriangleMethod3_WithZ({ t0[0], t0[1], t0[2] }, image, red, FAR_PLANE, zbuffer);
-	DrawTriangleMethod3_WithZ({ t2[0], t2[1], t2[2] }, image, green, FAR_PLANE, zbuffer);
+	// DrawTriangleMethod3_WithZ({ t1[0], t1[1], t1[2] } , image, white, FAR_PLANE, zbuffer);
+	// DrawTriangleMethod3_WithZ({ t0[0], t0[1], t0[2] }, image, red, FAR_PLANE, zbuffer);
+	// DrawTriangleMethod3_WithZ({ t2[0], t2[1], t2[2] }, image, green, FAR_PLANE, zbuffer);
 
 	image.flip_vertically();
 	//image.write_tga_file("triangle_test2.tga");
@@ -98,20 +98,36 @@ inline QuantizeShadar quantizeShader( QUANTIZE_TINT, QUANTIZE_LEVELS );
 inline IFragmentShader& fragmentShader = quantizeShader;
 inline IVertexShader& vertexShader = quantizeShader;
 #elif SHADER_DEF == PHONG_NORMAL_SHADER_DEF
-inline NormalMappedPhongShader normalPhongShader (100.0f);
+inline NormalMappedPhongShader normalPhongShader (10.0f);
 inline IFragmentShader& fragmentShader = normalPhongShader;
 inline IVertexShader& vertexShader = normalPhongShader;
 #endif
 
+inline const char* AFRICAN_HEAD_MODEL_PATH = "../../../assets/models/african_head.obj";
+inline const char* AFRICAN_HEAD_DIFFUSE_PATH = "../../../assets/models/african_head_diffuse.tga";
+inline const char* AFRICAN_HEAD_NORMAL_TANGENT = "../../../assets/models/african_head_nm_tangent.tga";
+
+inline const char* DIABLO_POSE_MODEL_PATH = "../../../assets/models/diablo3_pose.obj";
+inline const char* DIABLO_POSE_DIFFUSE_PATH = "../../../assets/models/diablo3_pose_diffuse.tga";
+inline const char* DIABLO_POSE_NORMAL_TANGENT_PATH = "../../../assets/models/diablo3_pose_nm_tangent.tga";
+inline const char* DIABLO_POSE_GLOW_PATH = "../../../assets/models/diablo3_pose_glow.tga";
+inline const char* DIABLO_POSE_SPEC_PATH = "../../../assets/models/diablo3_pose_spec.tga";
+
+inline const char* MODEL_PATH = DIABLO_POSE_MODEL_PATH;
+inline const char* ALBEDO_PATH = DIABLO_POSE_DIFFUSE_PATH;
+inline const char* NORMAL_TS_PATH = DIABLO_POSE_NORMAL_TANGENT_PATH;
+inline const char* SPECULAR_TS_PATH = DIABLO_POSE_SPEC_PATH;
+
+inline const char* OUTPUT_FILE_NAME = "diablo_specular.tga";
 
 void DrawTriangle_Model()
 {
-	Model headModel{ "../../../assets/models/african_head.obj" };
+	Model headModel{MODEL_PATH};
 	constexpr int FAR_PLANE = 1000;
-	const Vec3f LIGHT_POS = { 0.f, 0.f, 10.f };
+	const Vec3f LIGHT_POS = { 1.f, 1.f, 1.f };
 	const Vec3f LIGHT_COLOR = { 1.f, 1.f, 1.f };
 	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
-	constexpr Vec3f camPos = { 2.0f,1.5f, 10.0f };
+	constexpr Vec3f camPos = { 1.0f,1.f, 3.0f };
 	constexpr float scale = 0.85f;
 	constexpr Vec2f offsetViewport{ 0.f, 0.f };
 	constexpr Vec3f modelPosition{ 0.f, 0.f, 0.f };
@@ -119,13 +135,21 @@ void DrawTriangle_Model()
 	ZBufferBase* zBuffer = new ZBufferIntDefault;
 	TGAImage albedoTexture;
 	//albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
-	albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
+	albedoTexture.read_tga_file(ALBEDO_PATH);
 	albedoTexture.flip_vertically();
 
 	TGAImage normalTexture;
-	normalTexture.read_tga_file("../../../assets/models/african_head_nm_tangent.tga");
+	normalTexture.read_tga_file(NORMAL_TS_PATH);
 	normalTexture.flip_vertically();
 	fragmentShader.SetNormalTexture(&normalTexture);
+
+	TGAImage specularTexture;
+	if (SPECULAR_TS_PATH != nullptr)
+	{
+		specularTexture.read_tga_file(SPECULAR_TS_PATH);
+		specularTexture.flip_vertically();
+		fragmentShader.SetSpecularTexture(&specularTexture);
+	}
 
 	// setup necessary matrices
 	Mat4 modelMat;
@@ -133,10 +157,12 @@ void DrawTriangle_Model()
 	modelMat *= scale;
 	modelMat.SetColumn(3, modelPosition.ToPoint());
 	Mat4 viewPortMat = getViewport(offsetViewport, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
-	Mat4 projectionMat = getProjection(std::abs(modelPosition.z - camPos.z));
+	Mat4 projectionMat = getProjection((modelPosition - camPos).magnitude());
 	Mat4 viewMat = getLookAt(camPos, modelPosition);
 
-	Mat4 MVP = viewPortMat * projectionMat * viewMat * modelMat;
+	// TODO: why does the projection matrix fucks up the z coord??
+	Mat4 MVP = projectionMat * viewMat * modelMat;
+	// Mat4 MVP =  viewMat * modelMat;
 
 	Mat4 MVP_IT = MVP.GetInverse().GetTranspose();
 
@@ -146,6 +172,7 @@ void DrawTriangle_Model()
 	mgl::VP = projectionMat * viewMat;
 	mgl::ModelMat = modelMat;
 	mgl::ViewMat = viewMat;
+	mgl::ViewportMat = viewPortMat;
 	mgl::ProjectionMat = projectionMat;
 	mgl::LightDir = LIGHT_POS;
 	mgl::LightDir.normalize();
@@ -176,13 +203,14 @@ void DrawTriangle_Model()
 
 		TGAColor tint = TGAColor::FromFloat( 1.0f, 1.0f, 1.0f, 1.0f);
 
-		Vec3f transV0 = vertexShader.vertex(i, 0);
+	
+		Vec3f transV0 = (viewPortMat * vertexShader.vertex(i, 0).ToPoint()).FromHomogeneous();
 		Vec3i transV0i = Vec3i{ (int)transV0.x, (int)transV0.y, (int)transV0.z, };
 
-		Vec3f transV1 = vertexShader.vertex(i, 1);
+		Vec3f transV1 = (viewPortMat * vertexShader.vertex(i, 1).ToPoint()).FromHomogeneous();
 		Vec3i transV1i = Vec3i{ (int)transV1.x, (int)transV1.y, (int)transV1.z, };
 
-		Vec3f transV2 = vertexShader.vertex(i, 2);
+		Vec3f transV2 = (viewPortMat * vertexShader.vertex(i, 2).ToPoint()).FromHomogeneous();
 		Vec3i transV2i = Vec3i{ (int)transV2.x, (int)transV2.y, (int)transV2.z, };
 
 		Vec3f v0ws = (modelMat * v0.ToPoint()).FromHomogeneous();
@@ -193,8 +221,8 @@ void DrawTriangle_Model()
 
 		Triangle t
 		{
-			transV0i, transV1i,transV2i,		
-			v0ws, v1ws, v2ws
+			transV0, transV1, transV2,		
+			// v0ws, v1ws, v2ws
 		};
 
 		for (int perfi = 0; perfi < PERFORMANCE_TEST_ITERATIONS; perfi++)
@@ -205,5 +233,5 @@ void DrawTriangle_Model()
 
 
 	image.flip_vertically();
-	image.write_tga_file("AfricanHead_render_Triangles.tga");
+	image.write_tga_file(OUTPUT_FILE_NAME);
 }

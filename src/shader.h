@@ -10,7 +10,7 @@ constexpr i32 NORMAL_NDC_VARYING_DATA_HASH = 1;
 constexpr i32 UV_VARYING_DATA_HASH = 2;
 constexpr i32 VERTEX_WS_VARYING_DATA_HASH = 3;
 constexpr i32 VERTEX_CS_VARYING_DATA_HASH = 4;
-constexpr i32 VERTEX_NDC_VARYING_DATA_HASH = 5;
+constexpr i32 VERTEX_VIEWSPACE_VARYING_DATA_HASH = 5;
 
 class IShaderBase
 {
@@ -50,6 +50,7 @@ public:
 
 	void SetAlbedoTexture(TGAImage* albedoTexture) { m_AlbedoTexture = albedoTexture; }
 	void SetNormalTexture(TGAImage* normalTexture) { m_NormalTexture = normalTexture; }
+	void SetSpecularTexture(TGAImage* specularTexture) { m_SpecularTexture = specularTexture; }
 
 	void SetBarycentricCoordinates(Vec3f coords) { m_BaryCoords = coords; }
 protected:
@@ -57,6 +58,7 @@ protected:
 	Vec3f m_BaryCoords;
 	TGAImage* m_AlbedoTexture { nullptr };
 	TGAImage* m_NormalTexture { nullptr };
+	TGAImage* m_SpecularTexture { nullptr };
 
 	Vec4f GetInterpolatedData4(i32 dataHash) const;
 	Vec3f GetInterpolatedData3(i32 dataHash) const;
