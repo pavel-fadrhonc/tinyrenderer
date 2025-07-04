@@ -24,9 +24,22 @@ inline Mat4 getProjection(float cameraDistance)
 	return projMat;
 }
 
+// this is not necessarily lookAt matrix in traditional sense where it would transform model vertices to world space
+// as if the model is looking at the target but rather the inverted version of that - a View matrix that transforms
+// world space into camera space. But instead of constructing the look at and just calling .Inverse() on it,
+// we build the inverted matrix directly by
+// 1) Inverting the rotation matrix - rotation matrix is orthogonal and it's inverse is it's transpose so we put basis
+//		vectors as rows
+// 2) Inverting the translation. And because M.Inverse() = (A*B).Inverse() = B.Inverse() * A.Inverse() we need to
+//		multiply the inverted translating vector (position of the eye frame) with inverted rotation matrix
+// more information about detailed distinction here: https://www.scratchapixel.com/lessons/mathematics-physics-for-computer-graphics/lookat-function/framing-lookat-function.html
 inline Mat4 getLookAt(const Vec3f& eyePos, const Vec3f& center)
 {
+<<<<<<< HEAD
 	Vec3f forward = (center - eyePos).normalize();
+=======
+	Vec3f forward = (center	 - eyePos).normalize();
+>>>>>>> 70d63a3a7a6781cc29f0c4874d149fb325f3b5d3
 	Vec3f right = VUp.cross(forward).normalize();
 	Vec3f up = forward.cross(right).normalize();
 
@@ -35,10 +48,19 @@ inline Mat4 getLookAt(const Vec3f& eyePos, const Vec3f& center)
 	lookAtMat.SetRow(0, right);
 	lookAtMat.SetRow(1, up);
 	lookAtMat.SetRow(2, forward);
+<<<<<<< HEAD
 	Mat4 translMat;
 	translMat.SetIdentity();
 	translMat.SetColumn(3, (-eyePos).ToPoint());
 	lookAtMat = lookAtMat * translMat;
+=======
+
+	Mat4 translationMat;
+	translationMat.SetIdentity();
+	translationMat.SetColumn(3, (-eyePos).ToPoint());
+
+	lookAtMat = lookAtMat * translationMat;
+>>>>>>> 70d63a3a7a6781cc29f0c4874d149fb325f3b5d3
 
 	return lookAtMat;
 }
