@@ -1,237 +1,216 @@
 #include <iostream>
+#include <memory>
 
 #include "triangle_drawing.h"
 #include "geometry.h"
 #include "random.h"
 #include "constants.h"
+#include "input.h"
+#include "math.h"
 #include "my_gl.h"
 #include "shader.h"
+#include "TGAColor.h"
 #include "tgaimage.h"
 #include "transformations.h"
+#include "time.h"
 
-void DrawTriangleTest()
+namespace sor
 {
-	constexpr int FAR_PLANE = 100;
-	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
 
-	Vec2i t0[3] = { Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80) };
-	Vec2i t1[3] = { Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180) };
-	Vec2i t2[3] = { Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180) };
+	void inline DrawTriangleTest()
+	{
+		constexpr int FAR_PLANE = 100;
+		TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, Texture::ETextureFormat::RGB);
 
-	ZBuffer2D zbuffer;
+		Vec2i t0[3] = { Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80) };
+		Vec2i t1[3] = { Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180) };
+		Vec2i t2[3] = { Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180) };
 
-	// DrawTriangleMethod3_WithZ({ t1[0], t1[1], t1[2] } , image, white, FAR_PLANE, zbuffer);
-	// DrawTriangleMethod3_WithZ({ t0[0], t0[1], t0[2] }, image, red, FAR_PLANE, zbuffer);
-	// DrawTriangleMethod3_WithZ({ t2[0], t2[1], t2[2] }, image, green, FAR_PLANE, zbuffer);
+		ZBufferDummy zbuffer;
 
-	image.flip_vertically();
-	//image.write_tga_file("triangle_test2.tga");
-	image.write_tga_file("triangle_test3.tga");
+		// DrawTriangleMethod3_WithZ({ t1[0], t1[1], t1[2] } , image, white, FAR_PLANE, zbuffer);
+		// DrawTriangleMethod3_WithZ({ t0[0], t0[1], t0[2] }, image, red, FAR_PLANE, zbuffer);
+		// DrawTriangleMethod3_WithZ({ t2[0], t2[1], t2[2] }, image, green, FAR_PLANE, zbuffer);
 
-}
+		image.flip_vertically();
+		//image.write_tga_file("triangle_test2.tga");
+		image.write_tga_file("triangle_test3.tga");
 
-void MatrixInverseTest()
-{
-	std::array<float, 9> arr{ 2, 2, 3, 4, 5, 6, 7, 8, 9 };
-	using Mat3 = MatrixGeneric<float, 3, 3>;
-	Mat3 mat {arr};
+	}
 
-	using Mat2 = MatrixGeneric<float, 2, 2>;
-	auto printCofactor = [](const Mat2& mat)
-		{
-			for (int i = 0; i < 2; i++)
+	void inline MatrixInverseTest()
+	{
+		std::array<float, 9> arr{ 2, 2, 3, 4, 5, 6, 7, 8, 9 };
+		using Mat3 = MatrixGeneric<float, 3, 3>;
+		Mat3 mat{ arr };
+
+		using Mat2 = MatrixGeneric<float, 2, 2>;
+		auto printCofactor = [](const Mat2& mat)
 			{
-	 			for (int j = 0; j < 2; j++)
-					std::cout << mat.GetElement(i, j);
+				for (int i = 0; i < 2; i++)
+				{
+					for (int j = 0; j < 2; j++)
+						std::cout << mat.GetElement(i, j);
+
+					std::cout << "\n";
+				}
+			};
+
+		for (int i = 0; i < 3; i++)
+		{
+			for (int j = 0; j < 3; j++)
+			{
+				std::cout << "Cofactor " << i << j << "\n";
+
+				auto cofMat = mat.GetCofactor(i, j);
+				printCofactor(cofMat);
+				float determinant = cofMat.determinant();
+				std::cout << "Determinant: " << determinant << "\n";
 
 				std::cout << "\n";
 			}
-		};
+		}
 
-	for (int i = 0; i < 3; i++)
-	{
-		for (int j = 0; j < 3; j++)
+		auto adjoint = mat.getAdjoint();
+
+		std::cout << "adjoint matrix:\n";
+		for (int i = 0; i < 3; i++)
 		{
-			std::cout << "Cofactor " << i << j << "\n";
-
-			auto cofMat = mat.GetCofactor(i, j);
-			printCofactor(cofMat);
-			float determinant = cofMat.determinant();
-			std::cout << "Determinant: " << determinant << "\n";
+			for (int j = 0; j < 3; j++)
+				std::cout << adjoint.rawMat[i][j] << ' ';
 
 			std::cout << "\n";
 		}
+
+		float determinant = mat.determinant();
+		std::cout << "determinant: " << determinant << '\n';
+
+		auto inverse = mat.GetInverse();
+		std::cout << inverse << '\n';
 	}
 
-	auto adjoint = mat.getAdjoint();
+	inline const char* OUTPUT_FILE_NAME = "diablo_specular.tga";
 
-	std::cout << "adjoint matrix:\n";
-	for (int i = 0; i < 3; i++)
+	struct DrawContext
 	{
-		for (int j = 0; j < 3; j++)
-			std::cout << adjoint.rawMat[i][j] << ' ';
+		Model model;
+		Texture screenTexture;
+		std::unique_ptr<ZBufferBase> zBuffer = std::make_unique<ZBufferFloatDefault>();
 
-		std::cout << "\n";
-	}
+		// textures
+		TGAImage albedoTexture;
+		TGAImage normalTexture;
+		TGAImage specularTexture;
+	};
+	inline DrawContext g_DrawContext;
 
-	float determinant = mat.determinant();
-	std::cout << "determinant: " << determinant << '\n';
-
-	auto inverse = mat.GetInverse();
-	std::cout << inverse << '\n';
-}
-
-#define PHONG_SHADER_DEF 1
-#define QUANTIZE_SHADER_DEF 2
-#define PHONG_NORMAL_SHADER_DEF 3
-
-#define SHADER_DEF PHONG_NORMAL_SHADER_DEF
-
-#if SHADER_DEF == PHONG_SHADER_DEF
-inline BasicPhongShader phongShader {};
-inline IFragmentShader& fragmentShader = phongShader;
-inline IVertexShader& vertexShader = phongShader;
-#elif SHADER_DEF == QUANTIZE_SHADER_DEF
-constexpr Vec3f QUANTIZE_TINT { 0.34f, 0.58f, 0.19f };
-constexpr int QUANTIZE_LEVELS{ 5 };
-inline QuantizeShadar quantizeShader( QUANTIZE_TINT, QUANTIZE_LEVELS );
-inline IFragmentShader& fragmentShader = quantizeShader;
-inline IVertexShader& vertexShader = quantizeShader;
-#elif SHADER_DEF == PHONG_NORMAL_SHADER_DEF
-inline NormalMappedPhongShader normalPhongShader (10.0f);
-inline IFragmentShader& fragmentShader = normalPhongShader;
-inline IVertexShader& vertexShader = normalPhongShader;
-#endif
-
-inline const char* AFRICAN_HEAD_MODEL_PATH = "../../../assets/models/african_head.obj";
-inline const char* AFRICAN_HEAD_DIFFUSE_PATH = "../../../assets/models/african_head_diffuse.tga";
-inline const char* AFRICAN_HEAD_NORMAL_TANGENT = "../../../assets/models/african_head_nm_tangent.tga";
-
-inline const char* DIABLO_POSE_MODEL_PATH = "../../../assets/models/diablo3_pose.obj";
-inline const char* DIABLO_POSE_DIFFUSE_PATH = "../../../assets/models/diablo3_pose_diffuse.tga";
-inline const char* DIABLO_POSE_NORMAL_TANGENT_PATH = "../../../assets/models/diablo3_pose_nm_tangent.tga";
-inline const char* DIABLO_POSE_GLOW_PATH = "../../../assets/models/diablo3_pose_glow.tga";
-inline const char* DIABLO_POSE_SPEC_PATH = "../../../assets/models/diablo3_pose_spec.tga";
-
-inline const char* MODEL_PATH = DIABLO_POSE_MODEL_PATH;
-inline const char* ALBEDO_PATH = DIABLO_POSE_DIFFUSE_PATH;
-inline const char* NORMAL_TS_PATH = DIABLO_POSE_NORMAL_TANGENT_PATH;
-inline const char* SPECULAR_TS_PATH = DIABLO_POSE_SPEC_PATH;
-
-inline const char* OUTPUT_FILE_NAME = "diablo_specular.tga";
-
-void DrawTriangle_Model()
-{
-	Model headModel{MODEL_PATH};
-	constexpr int FAR_PLANE = 1000;
-	const Vec3f LIGHT_POS = { 1.f, 1.f, 1.f };
-	const Vec3f LIGHT_COLOR = { 1.f, 1.f, 1.f };
-	TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
-	constexpr Vec3f camPos = { 1.0f,1.f, 3.0f };
-	constexpr float scale = 0.85f;
-	constexpr Vec2f offsetViewport{ 0.f, 0.f };
-	constexpr Vec3f modelPosition{ 0.f, 0.f, 0.f };
-
-	ZBufferBase* zBuffer = new ZBufferIntDefault;
-	TGAImage albedoTexture;
-	//albedoTexture.read_tga_file("../../../assets/models/african_head_diffuse.tga");
-	albedoTexture.read_tga_file(ALBEDO_PATH);
-	albedoTexture.flip_vertically();
-
-	TGAImage normalTexture;
-	normalTexture.read_tga_file(NORMAL_TS_PATH);
-	normalTexture.flip_vertically();
-	fragmentShader.SetNormalTexture(&normalTexture);
-
-	TGAImage specularTexture;
-	if (SPECULAR_TS_PATH != nullptr)
+	// Currently this only serves separation into stuff that is done once at the start and stuff that is done every frame
+	void inline PrepareForDrawModel()
 	{
-		specularTexture.read_tga_file(SPECULAR_TS_PATH);
-		specularTexture.flip_vertically();
-		fragmentShader.SetSpecularTexture(&specularTexture);
-	}
+		g_DrawContext.screenTexture = Texture{ IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, Texture::ETextureFormat::RGB };
 
-	// setup necessary matrices
-	Mat4 modelMat;
-	modelMat.SetIdentity();
-	modelMat *= scale;
-	modelMat.SetColumn(3, modelPosition.ToPoint());
-	Mat4 viewPortMat = getViewport(offsetViewport, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
-	Mat4 projectionMat = getProjection((modelPosition - camPos).magnitude());
-	Mat4 viewMat = getLookAt(camPos, modelPosition);
+		g_DrawContext.model.Load(MODEL_PATHS[(int) SCENE]);
 
-	// TODO: why does the projection matrix fucks up the z coord??
-	Mat4 MVP = projectionMat * viewMat * modelMat;
-	// Mat4 MVP =  viewMat * modelMat;
+		g_DrawContext.albedoTexture.read_tga_file(ALBEDO_PATHS[(int) SCENE]);
+		g_DrawContext.albedoTexture.flip_vertically();
 
-	Mat4 MVP_IT = MVP.GetInverse().GetTranspose();
-
-	// setup globals
-	mgl::MVP = MVP;
-	mgl::MVP_IT = MVP_IT;
-	mgl::VP = projectionMat * viewMat;
-	mgl::ModelMat = modelMat;
-	mgl::ViewMat = viewMat;
-	mgl::ViewportMat = viewPortMat;
-	mgl::ProjectionMat = projectionMat;
-	mgl::LightDir = LIGHT_POS;
-	mgl::LightDir.normalize();
-	mgl::LightDirColor = LIGHT_COLOR;
-	mgl::CameraPos = camPos;
-
-	vertexShader.SetModel(&headModel);
-	fragmentShader.SetAlbedoTexture(&albedoTexture);
-
-	Mat4 M_IT = modelMat.GetInverse().GetTranspose();
-
-	// for each face get all the triangle data and render
-	const int numFaces = headModel.nfaces();
-	for (int i = 0; i < numFaces; i++) 
-	{
-		std::vector<int> face = headModel.face(i);
-		Vec3f v0 = headModel.vert(face[0]);
-		Vec3f v1 = headModel.vert(face[2]);
-		Vec3f v2 = headModel.vert(face[4]);
-
-		Vec3f triangleNormal = (v1 - v0).cross(v2 - v0).normalize();
-		const Vec3f triangleNormalWS = (modelMat * triangleNormal.ToDirection()).ToVec3().normalize();
-
-		float shading = triangleNormalWS.dot((camPos - v0).normalize());
-
-		if (shading < 0.0f) // backface culling
-			continue;
-
-		TGAColor tint = TGAColor::FromFloat( 1.0f, 1.0f, 1.0f, 1.0f);
-
-	
-		Vec3f transV0 = (viewPortMat * vertexShader.vertex(i, 0).ToPoint()).FromHomogeneous();
-		Vec3i transV0i = Vec3i{ (int)transV0.x, (int)transV0.y, (int)transV0.z, };
-
-		Vec3f transV1 = (viewPortMat * vertexShader.vertex(i, 1).ToPoint()).FromHomogeneous();
-		Vec3i transV1i = Vec3i{ (int)transV1.x, (int)transV1.y, (int)transV1.z, };
-
-		Vec3f transV2 = (viewPortMat * vertexShader.vertex(i, 2).ToPoint()).FromHomogeneous();
-		Vec3i transV2i = Vec3i{ (int)transV2.x, (int)transV2.y, (int)transV2.z, };
-
-		Vec3f v0ws = (modelMat * v0.ToPoint()).FromHomogeneous();
-		Vec3f v1ws = (modelMat * v1.ToPoint()).FromHomogeneous();
-		Vec3f v2ws = (modelMat * v2.ToPoint()).FromHomogeneous();
-
-		constexpr int PERFORMANCE_TEST_ITERATIONS = 1;
-
-		Triangle t
+		if (NORMAL_TEXTURE_PATHS[(int) SCENE] != nullptr)
 		{
-			transV0, transV1, transV2,		
-			// v0ws, v1ws, v2ws
-		};
+			g_DrawContext.normalTexture.read_tga_file(NORMAL_TEXTURE_PATHS[(int) SCENE]);
+			g_DrawContext.normalTexture.flip_vertically();
+			fragmentShader.SetNormalTexture(&g_DrawContext.normalTexture);
+		}
 
-		for (int perfi = 0; perfi < PERFORMANCE_TEST_ITERATIONS; perfi++)
-			DrawTriangleMethod3_WithZ_WithTexture(t, image, tint, FAR_PLANE, *zBuffer, fragmentShader);
+		if (SPECULAR_TEXTURE_PATHS[(int) SCENE] != nullptr)
+		{
+			g_DrawContext.specularTexture.read_tga_file(SPECULAR_TEXTURE_PATHS[(int) SCENE]);
+			g_DrawContext.specularTexture.flip_vertically();
+			fragmentShader.SetSpecularTexture(&g_DrawContext.specularTexture);
+		}
+		
+		ModelMat.SetIdentity();
+		ModelMat *= MODEL_SCALE;
+		ModelMat.SetColumn(3, MODEL_POSITION.ToPoint());
 
-		//printf("Drawn face %d out of %d, progress: %.2f %% \n", i, numFaces, (static_cast<float>(i) / numFaces) * 100);
+		ViewportMat = getViewport(VIEWPORT_OFFSET, IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, FAR_PLANE);
+		ProjectionMat = getProjection(NEAR_PLANE, FAR_PLANE);
+		ViewMat = getLookAt(CAMERA_POSITION, MODEL_POSITION);
+		MVP = ProjectionMat * ViewMat * ModelMat;
+		MVP_IT = MVP.GetInverse().GetTranspose();
+		VP = ProjectionMat * ViewMat;
+		LightDir = LIGHT_POS;
+		LightDir.normalize();
+		LightDirColor = LIGHT_COLOR;
+		CameraPos = CAMERA_POSITION;
+
+		vertexShader.SetModel(&g_DrawContext.model);
+		fragmentShader.SetAlbedoTexture(&g_DrawContext.albedoTexture);
 	}
 
+	//--------------------------------------------------------------------------------------------------
+	void inline RotateModel()
+	{
+		static const float rotSpeed = PI / 4.f; // in radians per second
 
-	image.flip_vertically();
-	image.write_tga_file(OUTPUT_FILE_NAME);
+		float rotationDelta = (float) g_DeviceInput.ReadKeyInput(EKeyCodeFlags::F, EInputType::DOWN) * -rotSpeed * GetDeltaTime()
+			+ (float) g_DeviceInput.ReadKeyInput(EKeyCodeFlags::S, EInputType::DOWN) * rotSpeed * GetDeltaTime();
+		ModelMat.SetYaw(ModelMat.GetYaw() + rotationDelta);
+#if 0
+		static float lastTimeSeconds = 0;
+		// rotate based on time 
+		float currentTimeSeconds = GetTimeSinceStartupSeconds();
+
+		float rotationDelta = (currentTimeSeconds - lastTimeSeconds) * rotSpeed;
+		ModelMat.SetYaw(ModelMat.GetYaw() + rotationDelta);
+
+		lastTimeSeconds = currentTimeSeconds;
+#endif
+	}
+
+	//--------------------------------------------------------------------------------------------------
+	void inline DrawModel(DrawContext* pDrawContext)
+	{
+		// the output image in case I ever need it again
+		//TGAImage image(IMAGE_SIZE_DEFAULT_X, IMAGE_SIZE_DEFAULT_Y, TGAImage::RGB);
+		// for each face get all the triangle data and render
+		const int numFaces = pDrawContext->model.nfaces();
+		for (int i = 0; i < numFaces; i++)
+		{
+			std::vector<int> face = pDrawContext->model.face(i);
+			Vec3f v0 = pDrawContext->model.vert(face[0]);
+			Vec3f v1 = pDrawContext->model.vert(face[2]);
+			Vec3f v2 = pDrawContext->model.vert(face[4]);
+
+			Vec3f triangleNormal = (v1 - v0).cross(v2 - v0).normalize();
+			const Vec3f triangleNormalWS = (ModelMat * triangleNormal.ToDirection()).ToVec3().normalize();
+
+			float shading = triangleNormalWS.dot((CAMERA_POSITION - v0).normalize());
+
+			if (shading < 0.0f) // backface culling
+				continue;
+
+			TGAColor tint = TGAColor::FromFloat(1.0f, 1.0f, 1.0f, 1.0f);
+
+			Vec4f screenSpacePosV0 = ViewportMat * vertexShader.vertex(i, 0);
+			Vec4f screenSpacePosV1 = ViewportMat * vertexShader.vertex(i, 1);
+			Vec4f screenSpacePosV2 = ViewportMat * vertexShader.vertex(i, 2);
+
+			Triangle t
+			{
+				screenSpacePosV0, screenSpacePosV1, screenSpacePosV2,
+				i
+			};
+
+			g_DrawContext.zBuffer->Clear();
+			// DrawTriangleWired(t, g_DrawContext.screenTexture, TGAColor::FromFloat( 1.0f, 1.0f, 1.0f, 0.f ));
+			DrawTriangle_Standard(t, g_DrawContext.screenTexture, *g_DrawContext.zBuffer, fragmentShader);
+			// DrawTriangleMethod3_WithZ_WithTexture(t, g_DrawContext.screenTexture, tint, FAR_PLANE, *g_DrawContext.zBuffer, fragmentShader);
+
+			//printf("Drawn face %d out of %d, progress: %.2f %% \n", i, numFaces, (static_cast<float>(i) / numFaces) * 100);
+		}
+
+
+		// image.flip_vertically();
+		// image.write_tga_file(OUTPUT_FILE_NAME);
+	}
 }

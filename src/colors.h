@@ -19,16 +19,19 @@
 
 //const static inline TGAColor2 white2 = TGAColor2(255, 255, 255, 255);
 
-const static inline TGAColor white = TGAColor( 255u, 255u, 255u, 255u );
-const static inline TGAColor red = TGAColor{ 255, 0, 0, 255 };
-const static inline TGAColor green = TGAColor{ 0, 255, 0, 255 };
-
-TGAColor GetRandomTGAColor()
+namespace sor
 {
-	return TGAColor{
-		static_cast<unsigned char>(Random::get(0, 255)),
-		static_cast<unsigned char>(Random::get(0, 255)),
-		static_cast<unsigned char>(Random::get(0, 255)),
-		static_cast<unsigned char>(1.0f) };
+	const static inline TGAColor white = TGAColor(255u, 255u, 255u, 255u);
+	const static inline TGAColor red = TGAColor{ 255, 0, 0, 255 };
+	const static inline TGAColor green = TGAColor{ 0, 255, 0, 255 };
+
+	TGAColor GetRandomTGAColor()
+	{
+		return TGAColor{
+			static_cast<unsigned char>(Random::get(0, 255)),
+			static_cast<unsigned char>(Random::get(0, 255)),
+			static_cast<unsigned char>(Random::get(0, 255)),
+			static_cast<unsigned char>(1.0f) };
+	}
 }
 

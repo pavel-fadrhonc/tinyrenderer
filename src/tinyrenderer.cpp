@@ -12,21 +12,19 @@
 
 
 
-int main(int argc, char** argv)
-{
-	bEngine::Instrumentor::Get().BeginSession("TinyRenderer");
-
-	DrawTriangle_Model();
-
-	//MatrixInverseTest();
-
-	//DrawTriangleTest();
-	//DrawModel_wireframe();
-	//DrawLineTest3();
-	//DrawLineTest2();
-	
-
-	bEngine::Instrumentor::Get().EndSession();
-
-	return 0;
-}
+// int main(int argc, char** argv)
+// {
+// 	bEngine::Instrumentor::Get().BeginSession("TinyRenderer");
+//
+// 	//MatrixInverseTest();
+//
+// 	//DrawTriangleTest();
+// 	//DrawModel_wireframe();
+// 	//DrawLineTest3();
+// 	//DrawLineTest2();
+// 	
+//
+// 	bEngine::Instrumentor::Get().EndSession();
+//
+// 	return 0;
+// }

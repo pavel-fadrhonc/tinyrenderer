@@ -1,9 +1,14 @@
 #pragma once
 
-constexpr float PI = 3.14159265f;
-
-struct Vector2
+namespace sor
 {
-	float x;
-	float y;
-};
+	constexpr float PI = 3.14159265f;
+	constexpr float PI_HALF = PI / 2.f;
+	constexpr float PI_QUARTER = PI / 4.f;
+
+	struct Vector2
+	{
+		float x;
+		float y;
+	};
+}

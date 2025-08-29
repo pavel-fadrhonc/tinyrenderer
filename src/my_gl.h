@@ -1,7 +1,7 @@
 #pragma once
 #include "geometry.h"
 
-namespace mgl
+namespace sor
 {
 	// values valid in shaders
 	inline Mat4 MVP;
